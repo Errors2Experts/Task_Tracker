@@ -1,0 +1,26 @@
+{% load pagination_tags %}
+{% if page_obj.paginator.num_pages > 1 %}
+{% querystring_without_page request as qs %}
+<div class="pagination">
+  <div class="pagination-links">
+    <a href="{% if page_obj.has_previous %}?{{ qs }}page=1{% endif %}"
+       class="page-link page-step {% if not page_obj.has_previous %}disabled{% endif %}"
+       aria-label="First page">&laquo;&nbsp;First</a>
+
+    {% for num in page_obj|elided_range %}
+      {% if num == "…" %}
+        <span class="page-ellipsis">&hellip;</span>
+      {% elif num == page_obj.number %}
+        <span class="page-link page-num active" aria-current="page">{{ num }}</span>
+      {% else %}
+        <a href="?{{ qs }}page={{ num }}" class="page-link page-num">{{ num }}</a>
+      {% endif %}
+    {% endfor %}
+
+    <a href="{% if page_obj.has_next %}?{{ qs }}page={{ page_obj.paginator.num_pages }}{% endif %}"
+       class="page-link page-step {% if not page_obj.has_next %}disabled{% endif %}"
+       aria-label="Last page">Last&nbsp;&raquo;</a>
+  </div>
+  <span class="pagination-info">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+</div>
+{% endif %}

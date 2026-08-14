@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+{% block title %}Assign task — Task Tracker{% endblock %}
+{% block page_title %}Assign a task{% endblock %}
+{% block page_sub %}<a href="{% url 'task_assign_list' %}" style="color:var(--accent-600); font-weight:600; text-decoration:none;">&larr; Back to roster</a>{% endblock %}
+
+{% block extra_head %}
+  {{ formset.forms.0.media }}
+{% endblock %}
+
+{% block content %}
+<div class="card card-pad form-card atf-card">
+  <form method="post" enctype="multipart/form-data" id="assignTaskForm">
+    {% csrf_token %}
+
+    <div class="atf-block">
+      <div class="atf-block-label">Assignee</div>
+      <div class="field">
+        <label for="toName">To</label>
+        <input type="text" id="toName" value="{{ employee.get_full_name|default:employee.username }}" readonly>
+      </div>
+    </div>
+
+    {{ formset.management_form }}
+
+    <div class="atf-block">
+      <div class="atf-block-label">Task details</div>
+      <div id="task-rows">
+        {% for form in formset %}
+          <div class="atf-task-row" data-row>
+            <div class="atf-row-head">
+              <span class="atf-row-badge">Task {{ forloop.counter }}</span>
+              {% if not forloop.first %}
+                <button type="button" class="remove-row" aria-label="Remove task" onclick="this.closest('.atf-task-row').remove()">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                </button>
+              {% endif %}
+            </div>
+
+            <div class="field">
+              <label>Task Title <span class="atf-required">*</span></label>
+              {{ form.task_title }}
+            </div>
+
+            <div class="atf-triple-grid">
+              <div class="field">
+                <label>Priority</label>
+                {{ form.priority }}
+              </div>
+              <div class="field">
+                <label>Due date</label>
+                {{ form.due_date }}
+              </div>
+              <div class="field">
+                <label>Due time</label>
+                {{ form.due_time }}
+              </div>
+            </div>
+
+            <div class="field">
+              <label>Task Description <span class="atf-optional">(optional)</span></label>
+              {{ form.task_description|safe }}
+              {% if form.task_description.errors %}<div class="alert alert-error">{{ form.task_description.errors|striptags }}</div>{% endif %}
+            </div>
+
+            <div class="field atf-last-field">
+              <label>Attachment <span class="atf-optional">(optional)</span></label>
+              {{ form.attachment }}
+              {% if form.attachment.errors %}<div class="alert alert-error">{{ form.attachment.errors|striptags }}</div>{% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+
+      <button type="button" id="add-row-btn" class="link-btn">+ Add another task</button>
+    </div>
+
+    <div class="atf-block">
+      <div class="atf-block-label">Routing</div>
+      <div class="form-grid">
+        <div class="field">
+          <label for="reportingTo">Reporting to</label>
+          <select id="reportingTo" name="reporting_to" required>
+            <option value="">Select</option>
+            {% for person in reporting_to_choices %}
+              <option value="{{ person.id }}">{{ person.get_full_name|default:person.username }} &mdash; {{ person.get_designation_display|default:person.get_role_display }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="assignedBy">Assigned by</label>
+          <input type="text" id="assignedBy" value="{{ request.user.get_full_name|default:request.user.username }} — {{ request.user.get_designation_display|default:request.user.get_role_display }}" readonly>
+        </div>
+        {% if show_team_lead_checkbox %}
+        <div class="field">
+          <label style="display:flex; align-items:center; gap:6px; font-weight:500;">
+            <input type="checkbox" name="team_lead_approved" checked> Team Lead Approved
+          </label>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <a href="{% url 'task_assign_list' %}" class="btn btn-ghost">Cancel</a>
+      <button type="submit" class="btn btn-primary">Assign task</button>
+    </div>
+  </form>
+</div>
+
+<template id="empty-row-template">
+  <div class="atf-task-row" data-row>
+    <div class="atf-row-head">
+      <span class="atf-row-badge">New task</span>
+      <button type="button" class="remove-row" aria-label="Remove task" onclick="this.closest('.atf-task-row').remove()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+      </button>
+    </div>
+
+    <div class="field">
+      <label>Task Title <span class="atf-required">*</span></label>
+      <input type="text" name="tasks-__prefix__-task_title" placeholder="e.g. Prepare onboarding checklist" required maxlength="200">
+    </div>
+
+    <div class="atf-triple-grid">
+      <div class="field">
+        <label>Priority</label>
+        <select name="tasks-__prefix__-priority">
+          <option value="LOW">Low</option>
+          <option value="MEDIUM" selected>Medium</option>
+          <option value="HIGH">High</option>
+          <option value="URGENT">Urgent</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Due date</label>
+        <input type="date" name="tasks-__prefix__-due_date">
+      </div>
+      <div class="field">
+        <label>Due time</label>
+        <input type="time" name="tasks-__prefix__-due_time">
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Task Description <span class="atf-optional">(optional)</span></label>
+      <textarea name="tasks-__prefix__-task_description" rows="2" placeholder="Describe the task in detail..."></textarea>
+    </div>
+
+    <div class="field atf-last-field">
+      <label>Attachment <span class="atf-optional">(optional)</span></label>
+      <input type="file" name="tasks-__prefix__-attachment">
+    </div>
+  </div>
+</template>
+
+<script>
+document.getElementById('add-row-btn').addEventListener('click', function () {
+  var totalFormsInput = document.querySelector('[name="tasks-TOTAL_FORMS"]');
+  var idx = parseInt(totalFormsInput.value, 10);
+  var template = document.getElementById('empty-row-template').innerHTML.split('__prefix__').join(idx);
+  document.getElementById('task-rows').insertAdjacentHTML('beforeend', template);
+  totalFormsInput.value = idx + 1;
+});
+</script>
+
+<script>
+document.getElementById('add-row-btn').addEventListener('click', function () {
+  var totalFormsInput = document.querySelector('[name="tasks-TOTAL_FORMS"]');
+  var idx = parseInt(totalFormsInput.value, 10);
+  var template = document.getElementById('empty-row-template').innerHTML.split('__prefix__').join(idx);
+  document.getElementById('task-rows').insertAdjacentHTML('beforeend', template);
+  totalFormsInput.value = idx + 1;
+
+  // Attach CKEditor 5 to the newly added row's description textarea.
+  var newTextarea = document.getElementById('id_tasks-' + idx + '-task_description');
+  if (newTextarea && window.ClassicEditor) {
+    ClassicEditor.create(newTextarea, {
+      toolbar: ['heading', '|', 'bold', 'italic', 'underline', 'strikethrough',
+                'link', 'bulletedList', 'numberedList', 'todoList', '|',
+                'outdent', 'indent', '|', 'fontSize', 'fontColor',
+                'fontBackgroundColor', '|', 'insertTable', 'blockQuote',
+                'codeBlock', 'imageUpload', '|', 'undo', 'redo']
+    }).catch(function (err) { console.error(err); });
+  }
+});
+</script>
+
+
+<style>
+  .atf-card { max-width: 760px; }
+
+  .atf-block { margin-bottom: 22px; }
+  .atf-block-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent-600);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .atf-task-row {
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 16px 16px 6px;
+    margin-bottom: 14px;
+  }
+  .atf-task-row:last-child { margin-bottom: 0; }
+
+  .atf-row-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .atf-row-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent-700);
+    background: var(--accent-soft);
+    border-radius: var(--radius-pill);
+    padding: 3px 10px;
+    letter-spacing: 0.02em;
+  }
+
+  .atf-required { color: var(--danger); }
+  .atf-optional { text-transform: none; font-weight: 400; color: var(--text-400); }
+
+  .atf-triple-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+  }
+
+  .atf-last-field { margin-bottom: 10px; }
+
+  .atf-cross-team {
+    display: block;
+    background: var(--warning-bg);
+    border: 1px solid #f3d38a;
+    border-radius: var(--radius-md);
+    padding: 14px 16px;
+    margin-bottom: 22px;
+  }
+  .atf-checkbox-title {
+    display: block;
+    font-weight: 650;
+    font-size: 13.8px;
+    color: var(--warning);
+  }
+  .atf-checkbox-sub {
+    display: block;
+    font-size: 12.5px;
+    color: var(--text-500);
+    margin-top: 3px;
+  }
+
+  @media (max-width: 640px) {
+    .atf-triple-grid { grid-template-columns: 1fr; }
+  }
+</style>
+{% endblock %}

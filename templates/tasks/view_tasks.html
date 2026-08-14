@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}View tasks — Task Tracker{% endblock %}
+{% block page_title %}View tasks{% endblock %}
+{% block page_sub %}Read-only view of every task within your access.{% endblock %}
+
+{% block content %}
+{% if assigned_to_user %}
+<div class="filter-bar" style="justify-content: space-between; align-items: center;">
+  <span>Showing tasks assigned to <strong>{{ assigned_to_user.get_full_name|default:assigned_to_user.username }}</strong></span>
+  <a href="{% url 'view_tasks' %}" class="btn btn-ghost">Clear</a>
+</div>
+{% endif %}
+<div class="filter-bar">
+  <form method="get">
+    {% if assigned_to_user %}<input type="hidden" name="assigned_to" value="{{ assigned_to_user.id }}">{% endif %}
+    <div class="field filter-field">
+      <label for="q">Search</label>
+      <input type="text" id="q" name="q" value="{{ query }}" placeholder="Title or assignee">
+    </div>
+    <div class="field filter-field">
+      <label for="status">Status</label>
+      <select id="status" name="status">
+        <option value="">All</option>
+        {% for value, label in status_choices %}
+          <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field filter-field">
+      <label for="priority">Priority</label>
+      <select id="priority" name="priority">
+        <option value="">All</option>
+        {% for value, label in priority_choices %}
+          <option value="{{ value }}" {% if priority_filter == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <a href="{% url 'view_tasks' %}" class="btn btn-ghost">Reset</a>
+    <button type="submit" class="btn btn-primary">Filter</button>
+  </form>
+  <a
+    href="{% url 'export_tasks_csv' %}?q={{ query|urlencode }}&status={{ status_filter|urlencode }}&priority={{ priority_filter|urlencode }}{% if assigned_to_user %}&assigned_to={{ assigned_to_user.id }}{% endif %}"
+    class="btn btn-ghost"
+  >
+    ⬇ Download CSV
+  </a>
+</div>
+<div class="roster-list">
+  {% for task in tasks %}
+    <div class="roster-row">
+      <div class="roster-person">
+        {% if task.assigned_to %}
+           {% if task.assigned_to.photo %}
+           <img src="{{ task.assigned_to.photo.url }}" alt="{{ task.assigned_to.get_full_name }}" class="avatar-img">
+           {% else %}
+           <div class="avatar">
+            {{ task.assigned_to.get_initials }}
+           </div>
+           {% endif %}
+           {% else %}
+             <div class="avatar">—</div>
+           {% endif %}
+        <div>
+          <div class="person-name">
+            <a href="{% url 'task_detail' task.id %}" style="color:inherit;">{{ task.title }}</a>
+            {% if task.team_lead_approval_status == "APPROVED" %}
+              <span class="pill" style="background:var(--success-bg); color:var(--success);" title="Cross-team assignment approved by the target team's lead">Team Lead Approved</span>
+            {% endif %}
+          </div>
+          <div class="person-role">
+            {% if task.assigned_to %}
+            {{ task.assigned_to.get_full_name|default:task.assigned_to.username }}
+            {% else %}
+            Unassigned
+            {% endif %}
+            &mdash; {{ task.team.name|default:"No team" }}
+            {% if task.due_date %}&middot; Due {{ task.due_date|date:"d M" }}{% if task.due_time %}, {{ task.due_time|time:"g:i A" }}{% endif %}{% endif %}
+            &middot; {{ task.progress }}% complete
+  
+          </div>
+          <div class="task-detail-meta">
+            <span>Reporting to: {% if task.reporting_to %}{{ task.reporting_to.get_full_name|default:task.reporting_to.username }}{% else %}&mdash;{% endif %}</span>
+            <span>Created by: {% if task.created_by %}{{ task.created_by.get_full_name|default:task.created_by.username }}{% else %}&mdash;{% endif %}</span>
+          </div>
+        </div>
+      </div>
+      <div class="roster-actions">
+        <span class="priority-pill priority-pill-{{ task.priority|lower }}">{{ task.get_priority_display }}</span>
+        {% if task.is_overdue %}<span class="pill status-pill status-pill-blocked">Overdue</span>{% endif %}
+        <span class="pill status-pill status-pill-{{ task.status|lower }}">{{ task.get_status_display }}</span>
+      </div>
+    </div>
+  {% empty %}
+    <div class="roster-row">
+      <p style="color: var(--text-500); margin: 0;">No tasks visible for your role yet.</p>
+    </div>
+  {% endfor %}
+</div>
+
+{% include "partials/pagination.html" %}
+{% endblock %}

@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Delete Task{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 560px; margin: 40px auto;">
+  <div class="card" style="border: 1px solid #e5322d33; border-radius: 10px; padding: 24px; background: #fff;">
+    <h2 style="margin-top: 0; color: #c0392b;">Delete this task?</h2>
+
+    <p>You're about to permanently delete the following task. This action
+      cannot be undone — all comments, attachments, and activity history
+      attached to it will be removed as well.</p>
+
+    <div style="background: #f8f9fa; border-radius: 8px; padding: 16px; margin: 16px 0;">
+      <p style="margin: 4px 0;"><strong>Title:</strong> {{ task.title }}</p>
+      <p style="margin: 4px 0;"><strong>Assigned to:</strong>
+        {% if task.assigned_to %}{{ task.assigned_to.get_full_name|default:task.assigned_to.username }}{% else %}—{% endif %}
+      </p>
+      <p style="margin: 4px 0;"><strong>Status:</strong> {{ task.get_status_display }}</p>
+      <p style="margin: 4px 0;"><strong>Priority:</strong> {{ task.get_priority_display }}</p>
+      {% if task.due_date %}
+      <p style="margin: 4px 0;"><strong>Due:</strong> {{ task.due_date|date:"d M Y" }}{% if task.due_time %}, {{ task.due_time|time:"g:i A" }}{% endif %}</p>
+      {% endif %}
+    </div>
+
+    <form method="post">
+      {% csrf_token %}
+      <div style="display: flex; gap: 12px; margin-top: 20px;">
+        <button type="submit"
+                style="background: #c0392b; color: #fff; border: none; padding: 10px 20px;
+                       border-radius: 6px; cursor: pointer; font-weight: 600;">
+          Yes, delete task
+        </button>
+        <a href="{% url 'task_detail' task_id=task.id %}"
+           style="padding: 10px 20px; border-radius: 6px; text-decoration: none;
+                  border: 1px solid #ccc; color: #333;">
+          Cancel
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

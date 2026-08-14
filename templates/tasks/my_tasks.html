@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}My tasks — Task Tracker{% endblock %}
+{% block page_title %}My tasks{% endblock %}
+{% block page_sub %}Tasks assigned to you by your reporting person.{% endblock %}
+
+{% block content %}
+<div>
+  <p class="status-note">
+  <i class="fas fa-info-circle"></i>
+      Once a task is marked as - <strong class="text-success">Completed</strong>, its status cannot be changed.
+  </p>
+</div>
+<div class="task-card-list">
+  {% for task in tasks %}
+    <div class="task-card">
+      <div class="task-card-main">
+        <div class="task-card-title"><a href="{% url 'task_detail' task.id %}" style="color:inherit;">{{ task.title }}</a>
+          {% if task.team_lead_approval_status == "APPROVED" %}
+              <span class="pill" style="background:var(--success-bg); color:var(--success);" title="Cross-team assignment approved by the target team's lead">Team Lead Approved</span>
+          {% endif %}
+        </div>
+
+        <div class="task-card-meta">
+          <span class="priority-pill priority-pill-{{ task.priority|lower }}">{{ task.get_priority_display }}</span>
+          {% if task.due_date %}&middot; Due {{ task.due_date|date:"d M Y" }}, {{ task.due_time|time:"g:i A" }}{% endif %}
+          {% if task.is_overdue %}&middot; <span style="color:#b91c1c; font-weight:600;">Overdue</span>{% endif %}
+        </div>
+        <div class="task-detail-meta">
+          <span><strong>Reporting to:</strong> {% if task.reporting_to %}{{ task.reporting_to.get_full_name|default:task.reporting_to.username }}{% else %}&mdash;{% endif %}</span>
+          <span><strong>Created by:</strong> {% if task.created_by %}{{ task.created_by.get_full_name|default:task.created_by.username }}{% else %}&mdash;{% endif %}</span>
+        </div>
+        <div class="progress-row" style="margin-top:8px; max-width:220px;">
+          <div class="progress-track"><div class="progress-fill" style="width:{{ task.progress }}%;"></div></div>
+          <div class="progress-label">{{ task.progress }}%</div>
+        </div>
+      </div>
+
+      {% if task.status == "CANCELLED" %}
+        <div class="status-toggle">
+          <span class="status-note" style="margin:0;">This task was cancelled and can no longer be updated.</span>
+        </div>
+      {% else %}
+      <form method="post" action="{% url 'update_task_status' task.id %}" class="status-toggle">
+        {% csrf_token %}
+        <button type="submit" name="status" value="COMPLETED"
+          class="status-btn {% if task.status == 'COMPLETED' %}active status-completed{% endif %}"
+          data-confirm-complete
+          {% if task.status == 'COMPLETED' %}data-already-completed{% endif %}>Completed</button>
+        <button type="submit" name="status" value="PENDING" class="status-btn {% if task.status == 'PENDING' %}active status-pending{% endif %}" {% if task.status == 'COMPLETED' %}disabled{% endif %}>Pending</button>
+        <button type="submit" name="status" value="BLOCKED" class="status-btn {% if task.status == 'BLOCKED' %}active status-blocked{% endif %}" {% if task.status == 'COMPLETED' %}disabled{% endif %}>Blocked</button>
+        <button type="submit" name="status" value="IN_PROGRESS" class="status-btn {% if task.status == 'IN_PROGRESS' %}active status-progress{% endif %}" {% if task.status == 'COMPLETED' %}disabled{% endif %}>In Progress</button>
+      </form>
+      {% endif %}
+
+    </div>
+  {% empty %}
+    <div class="card card-pad">
+      <p style="color: var(--text-500); margin: 0;">No tasks assigned to you yet.</p>
+    </div>
+  {% endfor %}
+</div>
+
+<!-- Confirm popup for "Completed" — reuses the existing .popup-overlay/.popup-box
+     classes from main.css (section 16) instead of one-off inline styles. -->
+<div class="popup-overlay" id="complete-confirm-overlay">
+  <div class="popup-box">
+    <h3 style="margin:0 0 8px; font-size:16px; color:var(--text-900);">Mark as Completed?</h3>
+    <p style="margin:0; font-size:13px; color:var(--text-500);">This cannot be changed once confirmed.</p>
+    <div class="popup-actions">
+      <button type="button" class="cancel-btn" id="complete-confirm-cancel">Cancel</button>
+      <button type="button" class="confirm-btn" id="complete-confirm-ok">Yes, Complete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const overlay = document.getElementById("complete-confirm-overlay");
+  const okBtn = document.getElementById("complete-confirm-ok");
+  const cancelBtn = document.getElementById("complete-confirm-cancel");
+  let pendingButton = null;
+
+  function openModal() { overlay.style.display = "flex"; }
+  function closeModal() { overlay.style.display = "none"; pendingButton = null; }
+
+  document.querySelectorAll("[data-confirm-complete]").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      // Already completed: keep the green "active" look, but do nothing —
+      // no popup, no re-submit.
+      if (btn.hasAttribute("data-already-completed")) return;
+      pendingButton = btn;
+      openModal();
+    });
+  });
+
+  cancelBtn.addEventListener("click", closeModal);
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) closeModal();
+  });
+
+  okBtn.addEventListener("click", () => {
+    if (pendingButton) {
+      const form = pendingButton.closest("form");
+      const hidden = document.createElement("input");
+      hidden.type = "hidden";
+      hidden.name = pendingButton.name;
+      hidden.value = pendingButton.value;
+      form.appendChild(hidden);
+      form.submit();
+    }
+    closeModal();
+  });
+})();
+</script>
+{% endblock %}

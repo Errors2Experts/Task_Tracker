@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Notifications — Task Tracker{% endblock %}
+{% block page_title %}Notifications{% endblock %}
+{% block page_sub %}Updates on tasks you're involved in.{% endblock %}
+
+{% block content %}
+{% if notifications %}
+  <div style="display:flex; justify-content:flex-end; margin-bottom:12px;">
+    <form method="post" action="{% url 'notifications_mark_all_read' %}">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-ghost">Mark all as read</button>
+    </form>
+  </div>
+{% endif %}
+
+<div class="roster-list">
+  {% for note in notifications %}
+    <div class="roster-row {% if note.task %}roster-row-status-{{ note.task.status|lower }}{% endif %}" style="{% if not note.is_read %}background:var(--banner-bg);{% endif %}">
+      <div>
+        <div class="person-name">
+          {{ note.message }} - {{ note.actor.get_full_name|default:note.actor.username }}
+          {% if note.task %}
+            <span class="pill status-pill status-pill-{{ note.task.status|lower }}">{{ note.task.get_status_display }}</span>
+          {% endif %}
+        </div>
+        <div class="person-role">{{ note.created_at|date:"d M Y, g:i A" }}</div>
+        {% if note.verb == "CREATED" or note.verb == "APPROVAL_PRE_GRANTED" and note.task.assigned_to %}
+  <div class="person-role">Assigned to: {{ note.task.assigned_to.get_full_name|default:note.task.assigned_to.username }}</div>
+{% endif %}
+      </div>
+      <div class="roster-actions">
+        {% if not note.is_read %}<span class="pill">Unread</span>{% endif %}
+        {% if note.task_id %}
+          <form method="post" action="{% url 'notification_mark_read' note.id %}">
+            {% csrf_token %}
+            <button type="submit" class="btn-primary">View task</button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+  {% empty %}
+    <div class="roster-row">
+      <p class="empty-note">No notifications yet.</p>
+    </div>
+  {% endfor %}
+</div>
+
+{% include "partials/pagination.html" %}
+{% endblock %}

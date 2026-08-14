@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+{% block title %}{{ task.title }} — Task Tracker{% endblock %}
+{% block page_title %}Task detail{% endblock %}
+{% block page_sub %}<a href="{{ request.META.HTTP_REFERER|default:'/tasks/' }}"
+  style="color:var(--accent-600); font-weight:600; text-decoration:none;">
+  &larr; Back
+</a>{% endblock %}
+
+{% block content %}
+<div class="task-detail-header">
+  <div>
+    <h1 class="task-detail-title">{{ task.title }}</h1>
+    <div class="task-detail-meta">
+      <span class="priority-pill priority-pill-{{ task.priority|lower }}">{{ task.get_priority_display }}
+        priority</span>
+      <span class="pill status-pill status-pill-{{ task.status|lower }}">{{ task.get_status_display }}</span>
+      {% if is_overdue %}<span class="pill status-pill status-pill-blocked">Overdue</span>{% endif %}
+      {% if task.team_lead_approval_status == "PENDING" %}
+        <span class="pill status-pill status-pill-blocked" title="Cross-team assignment awaiting the target team's lead">Pending Team Lead Approval</span>
+      {% elif task.team_lead_approval_status == "APPROVED" %}
+        <span class="pill" style="background:var(--success-bg); color:var(--success);" title="Cross-team assignment approved by the target team's lead">Team Lead Approved</span>
+      {% elif task.team_lead_approval_status == "REJECTED" %}
+        <span class="pill status-pill status-pill-blocked">Team Lead Rejected</span>
+      {% endif %}
+      <span>Team: {{ task.team.name|default:"No team" }}</span>
+      {% if task.due_date %}<span>Due {{ task.due_date|date:"d M Y" }}{% if task.due_time %}, {{ task.due_time|time:"g:i A" }}{% endif %}</span>{% endif %}
+    </div>
+    <div class="task-detail-meta">
+      <span>Assigned to: {% if task.assigned_to %}{{ task.assigned_to.get_full_name|default:task.assigned_to.username }}{% else %}Unassigned{% endif %}</span>
+      <span>Reporting to: {% if task.reporting_to %}{{ task.reporting_to.get_full_name|default:task.reporting_to.username }}{% else %}&mdash;{% endif %}</span>
+      <span>Created by: {% if task.created_by %}{{ task.created_by.get_full_name|default:task.created_by.username }}{% else %}&mdash;{% endif %}</span>
+    </div>
+  </div>
+  <div>
+    <div>
+  {% if can_edit and task.assigned_to != request.user %}
+    <a href="{% if task.status != 'COMPLETED' %}{% url 'task_edit' task.id %}{% else %}javascript:void(0){% endif %}"
+       class="btn btn-primary {% if task.status == 'COMPLETED' %}disabled-btn{% endif %}">
+      Edit task
+    </a>
+
+    <a href="{% if task.status != 'COMPLETED' %}{% url 'task_delete' task_id=task.id %}{% else %}javascript:void(0){% endif %}"
+       class="btn btn-danger {% if task.status == 'COMPLETED' %}disabled-btn{% endif %}"
+       style="background:#c0392b;color:#fff;padding:8px 16px;border-radius:6px;text-decoration:none;">
+      Delete task
+    </a>
+  {% endif %}
+</div>
+  </div>
+</div>
+
+{% if can_review_approval %}
+  <div class="card card-pad" style="margin-bottom:20px; border-left:4px solid var(--warning);">
+    <h4 style="margin-top:0;">Cross-Team Approval</h4>
+    <p style="color:var(--text-500); font-size:13.5px; margin:0 0 12px;">
+      This task was assigned across teams.
+      Current status:
+      {% if task.team_lead_approval_status == "PENDING" %}
+        <strong style="color:var(--warning);">Pending</strong>
+      {% elif task.team_lead_approval_status == "APPROVED" %}
+        <strong style="color:var(--success);">Approved</strong>
+        by {{ task.team_lead_decided_by.get_full_name|default:task.team_lead_decided_by.username }}
+        on {{ task.team_lead_decided_at|date:"d M Y, g:i A" }}
+      {% elif task.team_lead_approval_status == "REJECTED" %}
+        <strong style="color:var(--danger);">Rejected</strong>
+        by {{ task.team_lead_decided_by.get_full_name|default:task.team_lead_decided_by.username }}
+        on {{ task.team_lead_decided_at|date:"d M Y, g:i A" }} — the task was cancelled.
+      {% endif %}
+    </p>
+    <div style="display:flex; gap:10px;">
+      {% if task.team_lead_approval_status != "APPROVED" %}
+        <form method="post" action="{% url 'task_team_lead_decision' task.id 'approve' %}">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{% url 'task_detail' task.id %}">
+          <button type="submit" class="btn btn-primary">
+            {% if task.team_lead_approval_status == "REJECTED" %}Approve instead (reopen task){% else %}Approve{% endif %}
+          </button>
+        </form>
+      {% endif %}
+      {% if task.team_lead_approval_status != "REJECTED" %}
+        <form method="post" action="{% url 'task_team_lead_decision' task.id 'reject' %}">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{% url 'task_detail' task.id %}">
+          <button type="submit" class="btn btn-ghost">
+            {% if task.team_lead_approval_status == "APPROVED" %}Reject instead (cancel task){% else %}Reject{% endif %}
+          </button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+{% endif %}
+
+<div class="card card-pad" style="margin-bottom:20px;">
+  <div class="progress-row" style="margin-bottom:10px;">
+    <div class="progress-track">
+      <div class="progress-fill" style="width:{{ task.progress }}%;"></div>
+    </div>
+    <div class="progress-label">{{ task.progress }}%</div>
+  </div>
+  {% if task.description %}<div class="task-detail-desc">{{ task.description|safe }}</div>{% endif %}
+</div>
+
+<div class="task-detail-grid">
+  <div>
+    {% if can_update %}
+    <div class="card card-pad side-card">
+      <h4>Update status &amp; progress</h4>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="section" value="status">
+        <div class="form-grid">
+          <div class="field">
+            <label for="id_status">Status</label>
+            <select name="status" id="id_status" {% if task.status == "COMPLETED" %}disabled{% endif %}>
+              {% for value, label in status_form.status.field.choices %}
+              <option value="{{ value }}" {% if task.status == value %}selected{% endif %}>
+                {{ label }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label for="id_progress">Progress (%)</label>
+
+            <input type="number" name="progress" id="id_progress" value="{{ task.progress }}" {% if task.status == "COMPLETED" %}disabled{% endif %}>
+          </div>
+        </div>
+        <div class="form-actions" style="border-top:none; padding-top:0;">
+          <button type="submit" class="btn btn-primary {% if task.status == 'COMPLETED' %}disabled-btn{% endif %}"
+             {% if task.status == "COMPLETED" %}onclick="return false;"{% endif %}>
+             Save
+          </button>
+        </div>
+      </form>
+    </div>
+    {% endif %}
+
+    <div class="card card-pad side-card">
+      <h4>Comments</h4>
+      <div class="comment-list">
+        {% for comment in comments %}
+        <div class="comment-item">
+          <div class="comment-head">
+            <span class="comment-author">{{ comment.author.get_full_name|default:comment.author.username|default:"Deleted user" }}</span>
+            <span>{{ comment.created_at|date:"d M Y, g:i A" }}</span>
+          </div>
+          <div class="comment-body">{{ comment.body }}</div>
+        </div>
+        {% empty %}
+        <p class="empty-note">No comments yet.</p>
+        {% endfor %}
+      </div>
+      {% if can_collaborate %}
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="section" value="comment">
+        <div class="field">
+          {{ comment_form.body }}
+          {% if comment_form.body.errors %}<div class="alert alert-error">{{ comment_form.body.errors|striptags }}</div>
+          {% endif %}
+        </div>
+        <div class="form-actions" style="border-top:none; padding-top:0;">
+          <button type="submit" class="btn btn-primary">Post comment</button>
+        </div>
+      </form>
+      {% endif %}
+    </div>
+
+    <div class="card card-pad side-card">
+      <h4>Attachments</h4>
+      <div class="attachment-list">
+        {% for attachment in attachments %}
+        <div class="attachment-item">
+          <div>
+            <div class="attachment-name">{{ attachment.original_filename }}</div>
+            <div class="attachment-meta">{{ attachment.size_display }} &middot; uploaded by {{ attachment.uploaded_by.get_full_name|default:attachment.uploaded_by.username|default:"someone" }} on {{ attachment.uploaded_at|date:"d M Y" }}</div>
+          </div>
+          <div class="attachment-actions">
+            <a href="{{ attachment.file.url }}" class="btn btn-ghost" target="_blank" rel="noopener">Preview</a>
+            {% if can_edit or attachment.uploaded_by_id == request.user.id %}
+            <form method="post" action="{% url 'task_delete_attachment' task.id attachment.id %}">
+              {% csrf_token %}
+              <button type="submit" class="remove-row" aria-label="Remove attachment"
+                data-confirm="Remove this attachment? This can't be undone.">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="3 6 5 6 21 6" />
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                </svg>
+              </button>
+            </form>
+            {% endif %}
+          </div>
+        </div>
+        {% empty %}
+        <p class="empty-note">No attachments yet.</p>
+        {% endfor %}
+      </div>
+      {% if can_collaborate %}
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="hidden" name="section" value="attachment">
+        <div class="field">
+          {{ attachment_form.file }}
+          {% if attachment_form.file.errors %}<div class="alert alert-error">{{ attachment_form.file.errors|striptags }}
+          </div>{% endif %}
+        </div>
+        <div class="form-actions" style="border-top:none; padding-top:0;">
+          <button type="submit" class="btn btn-primary">Upload file</button>
+        </div>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <div>
+    <div class="card card-pad side-card">
+      <h4>Activity history</h4>
+      <div class="timeline">
+        {% for entry in activity %}
+        <div class="timeline-item">
+          <div><span class="timeline-actor">{{ entry.actor.get_full_name|default:entry.actor.username|default:"System" }}</span> &mdash; {{ entry.description }}</div>
+          <div class="timeline-time">{{ entry.created_at|date:"d M Y, g:i A" }}</div>
+        </div>
+        {% empty %}
+        <p class="empty-note">No activity recorded yet.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

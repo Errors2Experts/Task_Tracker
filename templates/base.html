@@ -1,0 +1,181 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}Task Tracker{% endblock %}</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+<link rel="stylesheet" href="{% static 'css/main.css' %}">
+{% block extra_head %}{% endblock %}
+
+</head>
+<body data-authenticated="{% if request.user.is_authenticated %}true{% else %}false{% endif %}">
+
+<div class="app-shell" data-app-shell>
+
+  <div class="sidebar-backdrop" data-sidebar-backdrop></div>
+
+  <nav class="sidebar" data-sidebar>
+    <div class="sidebar-brand">
+      <!-- <div class="brand-logo">T</div> -->
+      <img src="{% static 'image/logo.jpeg' %}" alt="photo" class="brand-logo">
+      <div class="brand-name">Task Tracker<span>E2E Solutions</span></div>
+      <!-- <button type="button" class="sidebar-collapse-btn" data-sidebar-collapse-toggle aria-label="Collapse sidebar">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+      </button> -->
+    </div>
+    <div class="sidebar-nav">
+      <div class="nav-eyebrow">Menu</div>
+      <a href="{% url 'dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+        <span class="nav-label">Dashboard</span>
+      </a>
+      {% if request.user.is_authenticated %}
+        <a href="{% url 'notifications' %}" class="nav-item {% if request.resolver_match.url_name == 'notifications' %}active{% endif %}">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <span class="nav-label">Notifications</span>
+          <span class="nav-badge" data-notification-badge {% if not unread_task_notification_count %}style="display:none;"{% endif %}>{{ unread_task_notification_count|default:"" }}</span>
+        </a>
+      {% endif %}
+      <!-- {# Employee Management is Admin-only (is_superuser) — nobody else, no matter their `role`/`designation`, ever sees these links. #} -->
+      {% if request.user.is_superuser or request.user.designation == "MANAGER" %}
+        <a href="{% url 'employee_list' %}" class="nav-item {% if request.resolver_match.url_name == 'employee_list' or request.resolver_match.url_name == 'employee_detail' or request.resolver_match.url_name == 'employee_edit' %}active{% endif %}">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span class="nav-label">Employees</span>
+        </a>
+        <a href="{% url 'employee_register' %}" class="nav-item {% if request.resolver_match.url_name == 'employee_register' %}active{% endif %}">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="16" y1="11" x2="22" y2="11"/></svg>
+          <span class="nav-label">Register Employee</span>
+        </a>
+      {% endif %}
+      <!-- {# Employee-tier nav only applies to non-admin Employees/Interns — the
+         Admin's `role` defaults to "EMPLOYEE" too, so is_superuser must be
+         checked alongside role here, not instead of it. #} -->
+      {% if request.user.role == "EMPLOYEE" and not request.user.is_superuser or request.user.role == "INTERN" and not request.user.is_superuser %}
+        <a href="{% url 'my_tasks' %}" class="nav-item {% if 'my-tasks' in request.path %}active{% endif %}">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          <span class="nav-label">My tasks</span>
+        </a>
+      {% else %}
+        {% if request.user.designation != "HR" %}
+          <a href="{% url 'task_assign_list' %}" class="nav-item {% if 'task-assign' in request.path %}active{% endif %}">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <span class="nav-label">Task assign</span>
+          </a>
+        {% endif %}
+        <!-- {# My Team: Admin/Manager see all Reporting persons; Technical/Testing/
+             Digital Marketing Lead see their department; Team Lead (Developer)
+             sees their own team. Nobody else (HR, employee-tier) gets this link. #} -->
+        {% if request.user.is_superuser or request.user.designation == "MANAGER" or request.user.designation == "TECHNICAL_LEAD" or request.user.designation == "TESTING_LEAD" or request.user.designation == "DIGITAL_MARKETING_LEAD" or request.user.designation == "TEAM_LEAD" %}
+          <a href="{% url 'my_team' %}" class="nav-item {% if 'my-team' in request.path %}active{% endif %}">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M12 3a4 4 0 1 1 0 8 4 4 0 0 1 0-8z"/></svg>
+            <span class="nav-label">My Team</span>
+          </a>
+        {% endif %}
+        <a href="{% url 'view_tasks' %}" class="nav-item {% if 'view-tasks' in request.path %}active{% endif %}">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          <span class="nav-label">View tasks</span>
+        </a>
+        {% if not request.user.is_superuser %}
+        <a href="{% url 'my_tasks' %}" class="nav-item {% if 'my-tasks' in request.path %}active{% endif %}">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 11l3 3L22 4"/>
+          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+          </svg>
+          <span class="nav-label">My tasks</span>
+        </a>
+       {% endif %}
+      {% endif %}
+    </div>
+    <div class="sidebar-foot">Signed in as <strong>{% if request.user.is_superuser %}Admin{% else %}{{ request.user.get_designation_display|default:request.user.get_role_display }}{% endif %}</strong></div>
+
+    <form method="post" action="{% url 'logout' %}">
+    {% csrf_token %}
+    <button type="submit" class="logout-btn">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      <span>Logout</span>
+    </button>
+  </form>
+
+  </nav>
+
+  <div class="main-col">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="hamburger" data-hamburger aria-label="Toggle menu">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <div>
+          <div class="page-title">{% block page_title %}{% endblock %}</div>
+          <div class="page-sub">{% block page_sub %}{% endblock %}</div>
+        </div>
+      </div>
+      {% if request.user.is_authenticated %}
+      <div class="profile-dropdown">
+
+    <button class="identity profile-toggle" type="button">
+
+        <div class="identity-text">
+            <div class="name">
+                {{ request.user.get_full_name|default:request.user.username }}
+                <span class="mono" style="color:var(--text-500);font-weight:500;">
+                    &middot; {{ request.user.username }}
+                </span>
+            </div>
+
+            <div class="meta">
+                {% if request.user.is_superuser %}
+                    Admin
+                {% else %}
+                    {{ request.user.get_designation_display|default:request.user.get_role_display }}
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="avatar">
+            {% if request.user.photo %}
+                <img src="{{ request.user.photo.url }}" class="avatar-img">
+            {% else %}
+                {{ request.user.get_initials }}
+            {% endif %}
+        </div>
+
+    </button>
+
+    <div class="profile-menu">
+
+        <a href="{% url 'profile' %}">
+            👤 My Profile
+        </a>
+
+        
+        <form action="{% url 'logout' %}" method="post">
+            {% csrf_token %}
+            <button type="submit">
+                🚪 Logout
+            </button>
+        </form>
+
+    </div>
+
+</div>
+      {% endif %}
+    </header>
+
+    <div class="content">
+      {% if messages %}
+        {% for message in messages %}
+          <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+</div>
+
+<script src="{% static 'js/main.js' %}"></script>
+{% if request.user.is_authenticated %}<script src="{% static 'js/notifications.js' %}"></script>{% endif %}
+</body>
+</html>

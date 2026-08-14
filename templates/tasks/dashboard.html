@@ -1,0 +1,350 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Task Tracker{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block page_sub %}Welcome back, {{ request.user.get_full_name|default:request.user.username }} — here's what's moving today.{% endblock %}
+
+{% block content %}
+
+{# ===== Quick actions ===== #}
+<div class="quick-actions-grid">
+  {% if my_stats %}
+    <a href="{% url 'my_tasks' %}" class="quick-action">
+      <span class="quick-action-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
+      <span class="quick-action-text"><span class="qa-title">My tasks</span><span class="qa-sub">Update status &amp; progress</span></span>
+    </a>
+  {% else %}
+    {% if request.user.designation != "HR" %}
+      <a href="{% url 'task_assign_list' %}" class="quick-action">
+        <span class="quick-action-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+        <span class="quick-action-text"><span class="qa-title">Assign a task</span><span class="qa-sub">Give work to your team</span></span>
+      </a>
+    {% endif %}
+    <a href="{% url 'view_tasks' %}" class="quick-action">
+      <span class="quick-action-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></span>
+      <span class="quick-action-text"><span class="qa-title">View all tasks</span><span class="qa-sub">Filter &amp; search everything</span></span>
+    </a>
+  {% endif %}
+  <a href="{% url 'notifications' %}" class="quick-action">
+    <span class="quick-action-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span>
+    <span class="quick-action-text"><span class="qa-title">Notifications</span><span class="qa-sub">{% if unread_task_notification_count %}{{ unread_task_notification_count }} unread{% else %}You're all caught up{% endif %}</span></span>
+  </a>
+  <a href="{% url 'export_tasks_csv' %}" class="quick-action">
+    <span class="quick-action-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>
+    <span class="quick-action-text"><span class="qa-title">Export CSV</span><span class="qa-sub">Download a task report</span></span>
+  </a>
+  {% if request.user.is_superuser or request.user.designation == "MANAGER" %}
+    <a href="{% url 'employee_register' %}" class="quick-action">
+      <span class="quick-action-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="16" y1="11" x2="22" y2="11"/></svg></span>
+      <span class="quick-action-text"><span class="qa-title">Register employee</span><span class="qa-sub">Add someone new</span></span>
+    </a>
+  {% endif %}
+</div>
+
+{# ===== Stats ===== #}
+{% if my_stats %}
+  <div class="stat-grid">
+    <div class="stat-card">
+      <div class="stat-label">Total tasks</div>
+      <div class="stat-num">{{ my_stats.total }}</div>
+      <div class="stat-caption">Across your assigned tasks</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Completed</div>
+      <div class="stat-num">{{ my_stats.completed }}</div>
+      <div class="stat-caption">+{{ my_stats.completed_this_week }} this week</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Pending</div>
+      <div class="stat-num">{{ my_stats.pending }}</div>
+      <div class="stat-caption">Due within 3 days: {{ my_stats.due_soon }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">In progress</div>
+      <div class="stat-num">{{ my_stats.in_progress }}</div>
+      <div class="stat-caption">Currently working on</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Blocked</div>
+      <div class="stat-num">{{ my_stats.blocked }}</div>
+      <div class="stat-caption">Needs attention</div>
+    </div>
+    {% if my_stats.overdue %}
+      <div class="stat-card stat-card-alert">
+        <div class="stat-label">Overdue</div>
+        <div class="stat-num">{{ my_stats.overdue }}</div>
+        <div class="stat-caption">Past due date</div>
+      </div>
+    {% endif %}
+  </div>
+
+{% elif team_stats %}
+  <div class="stat-grid">
+    <div class="stat-card">
+      <div class="stat-label">Total tasks</div>
+      <div class="stat-num">{{ team_stats.total }}</div>
+      <div class="stat-caption">Across all visible teams</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Completed</div>
+      <div class="stat-num">{{ team_stats.completed }}</div>
+      <div class="stat-caption">+{{ team_stats.completed_this_week }} this week</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Pending</div>
+      <div class="stat-num">{{ team_stats.pending }}</div>
+      <div class="stat-caption">Due within 3 days: {{ team_stats.due_soon }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">In progress</div>
+      <div class="stat-num">{{ team_stats.in_progress }}</div>
+      <div class="stat-caption">Currently being worked on</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Blocked</div>
+      <div class="stat-num">{{ team_stats.blocked }}</div>
+      <div class="stat-caption">Needs attention</div>
+    </div>
+    {% if team_stats.overdue %}
+      <div class="stat-card stat-card-alert">
+        <div class="stat-label">Overdue</div>
+        <div class="stat-num">{{ team_stats.overdue }}</div>
+        <div class="stat-caption">Past due date</div>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- {% if access_scope_message %}
+    <div class="banner-info">
+      {{ access_scope_message }}
+      {% if team_size %}&mdash; {{ team_size }} {% if team_size == 1 %}person{% else %}people{% endif %} in scope.{% endif %}
+    </div>
+  {% endif %} -->
+{% endif %}
+
+{# ===== Charts ===== #}
+<h3 class="section-label">Overview</h3>
+<div class="chart-grid">
+  <div class="chart-card">
+    <h4>Status distribution</h4>
+    <div class="chart-canvas-wrap"><canvas id="statusChart"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <h4>Open tasks by priority</h4>
+    <div class="chart-canvas-wrap"><canvas id="priorityChart"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <h4>Completions — last 7 days</h4>
+    <div class="chart-canvas-wrap"><canvas id="trendChart"></canvas></div>
+  </div>
+</div>
+
+{# ===== Recent / Overdue tasks ===== #}
+<div class="dashboard-split">
+  <div>
+    <div class="list-card-head">
+      <h3 class="section-label" style="margin:0;">Recent tasks</h3>
+      <a href="{% if my_stats %}{% url 'my_tasks' %}{% else %}{% url 'view_tasks' %}{% endif %}" class="link-btn" style="margin:0;">View all &rarr;</a>
+    </div>
+    <div class="roster-list">
+      {% for task in recent_tasks %}
+        <div class="roster-row">
+          <div class="roster-person">
+            <div class="avatar">
+              {% if task.assigned_to.photo %}
+              <img src="{{ task.assigned_to.photo.url }}" alt="{{ task.assigned_to.get_full_name }}" class="avatar-img">
+              {% else %}
+              <div class="avatar">
+                {{ task.assigned_to.get_initials }}
+              </div>
+              {% endif %}
+        </div>
+            <div>
+              <div class="person-name">{{ task.title }}</div>
+              <div class="person-role">
+                {{ task.assigned_to.get_full_name|default:"Unassigned" }}
+                &middot; {{ task.created_at|date:"d M" }}
+              </div>
+            </div>
+          </div>
+          <span class="pill status-pill status-pill-{{ task.status|lower }}">{{ task.get_status_display }}</span>
+        </div>
+      {% empty %}
+        <div class="roster-row"><p class="empty-note">No tasks yet.</p></div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div>
+    <div class="list-card-head">
+      <h3 class="section-label" style="margin:0;">Overdue tasks</h3>
+      <span class="pill status-pill status-pill-blocked" style="margin:0;">{{ overdue_tasks|length }}</span>
+    </div>
+    <div class="roster-list">
+      {% for task in overdue_tasks %}
+        <div class="roster-row">
+          <div class="roster-person">
+            <div class="avatar">
+              {% if task.assigned_to.photo %}
+              <img src="{{ task.assigned_to.photo.url }}" alt="{{ task.assigned_to.get_full_name }}" class="avatar-img">
+              {% else %}
+              <div class="avatar">
+                {{ task.assigned_to.get_initials }}
+              </div>
+              {% endif %}
+            </div>
+            <div>
+              <div class="person-name">{{ task.title }}</div>
+              <div class="person-role">
+                {{ task.assigned_to.get_full_name|default:"Unassigned" }}
+                &middot; Due {{ task.due_date|date:"d M" }}
+              </div>
+            </div>
+          </div>
+          <span class="priority-pill priority-pill-{{ task.priority|lower }}">{{ task.get_priority_display }}</span>
+        </div>
+      {% empty %}
+        <div class="roster-row"><p class="empty-note">Nothing overdue &mdash; nice work.</p></div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+{# ===== Employee summary / Recent activity ===== #}
+<div class="dashboard-split">
+  {% if employee_summary %}
+    <div>
+      <div class="list-card-head">
+        <h3 class="section-label" style="margin:0;">Employee summary</h3>
+        <a href="{% url 'task_assign_list' %}" class="link-btn" style="margin:0;">Full roster &rarr;</a>
+      </div>
+      <div class="roster-list">
+        {% for emp in employee_summary %}
+          <div class="roster-row">
+            <div class="roster-person">
+              <div class="avatar">
+                {% if emp.photo %}
+                <img src="{{ emp.photo.url }}" alt="{{ emp.get_full_name }}" class="avatar-img">
+                {% else %}
+                <div class="avatar">
+                  {{ emp.get_initials }}
+                </div>
+                {% endif %}
+        </div>
+              <div>
+                <div class="person-name">{{ emp.get_full_name|default:emp.username }}</div>
+                <div class="person-role">{{ emp.team.name|default:"No team" }} &middot; {{ emp.completed_count }} completed</div>
+              </div>
+            </div>
+            <span class="pill">{{ emp.open_count }} open</span>
+          </div>
+        {% empty %}
+          <div class="roster-row"><p class="empty-note">No team members visible for your role.</p></div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+
+  {% if recent_activity %}
+    <div>
+      <h3 class="section-label">Recent activity</h3>
+      <div class="roster-list">
+        {% for item in recent_activity %}
+          <div class="roster-row">
+            <div class="roster-person">
+              {% if item.user.photo %}
+                 <img src="{{ item.user.photo.url }}" alt="{{ item.user.get_full_name }}" class="avatar-img">
+              {% else %}
+                 <div class="avatar">
+                 {{ item.user.get_initials }}
+                 </div>
+              {% endif %}
+              <div>
+                <div class="person-name">{{ item.user.get_full_name|default:item.user.username }}</div>
+                <div class="person-role">{{ item.action }}</div>
+              </div>
+            </div>
+            <span class="pill status-pill status-pill-{{ item.status|lower }}">{{ item.status_display }}</span>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+  var chartData = {{ chart_data|safe }};
+  var textColor = "#6b7280";
+  var gridColor = "#eef0f4";
+  Chart.defaults.font.family = "-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+  Chart.defaults.color = textColor;
+
+  new Chart(document.getElementById("statusChart"), {
+    type: "doughnut",
+    data: {
+      labels: chartData.statusLabels,
+      datasets: [{
+        data: chartData.statusCounts,
+        backgroundColor: ["#fbbf24", "#3b82f6", "#ef4444", "#22c55e"],
+        borderWidth: 0,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: "62%",
+      plugins: { legend: { position: "bottom", labels: { boxWidth: 10, padding: 14 } } },
+    },
+  });
+
+  new Chart(document.getElementById("priorityChart"), {
+    type: "bar",
+    data: {
+      labels: chartData.priorityLabels,
+      datasets: [{
+        label: "Open tasks",
+        data: chartData.priorityCounts,
+        backgroundColor: "#4f46e5",
+        borderRadius: 6,
+        maxBarThickness: 42,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false } },
+        y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: gridColor } },
+      },
+    },
+  });
+
+  new Chart(document.getElementById("trendChart"), {
+    type: "line",
+    data: {
+      labels: chartData.trendLabels,
+      datasets: [{
+        label: "Completed",
+        data: chartData.trendCounts,
+        borderColor: "#4f46e5",
+        backgroundColor: "rgba(79, 70, 229, 0.12)",
+        tension: 0.35,
+        fill: true,
+        pointRadius: 3,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false } },
+        y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: gridColor } },
+      },
+    },
+  });
+})();
+</script>
+{% endblock %}

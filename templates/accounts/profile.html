@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+
+{% block title %}My Profile{% endblock %}
+{% block page_title %}My Profile{% endblock %}
+
+{% block content %}
+<style>
+  .profile-page {
+    --ink: #14213d;
+    --ink-soft: #4b5566;
+    --line: #e6e9ef;
+    --panel: #ffffff;
+    --accent: #2f6fed;
+    --accent-soft: #eaf1ff;
+    --surface: #f6f7fb;
+  }
+
+  .profile-card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    overflow: hidden;
+    max-width: 880px;
+    margin: 0 auto;
+  }
+
+  .profile-banner {
+    height: 50px;
+    background: linear-gradient(120deg, #14213d 0%, #2f6fed 100%);
+    position: relative;
+  }
+
+  .profile-header {
+    display: flex;
+    align-items: flex-end;
+    gap: 20px;
+    padding: 28px 28px;
+    
+  }
+
+  .profile-avatar-wrap {
+    flex-shrink: 0;
+  }
+
+  .profile-avatar-wrap img,
+  .profile-avatar-wrap .avatar.large {
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid var(--panel);
+    background: var(--accent-soft);
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 30px;
+    font-weight: 600;
+    box-shadow: 0 2px 6px rgba(20, 33, 61, 0.12);
+  }
+
+  .profile-identity {
+    padding-bottom: 10px;
+  }
+
+  .profile-identity h2 {
+    margin: 0 0 2px;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--ink);
+    line-height: 1.2;
+  }
+
+  .profile-identity .username {
+    margin: 0;
+    color: var(--ink-soft);
+    font-size: 14px;
+  }
+
+  .profile-badges {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 14px 28px 0;
+  }
+
+  .badge-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+  }
+
+  .badge-role {
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+
+  .badge-dept {
+    background: var(--surface);
+    color: var(--ink-soft);
+    border: 1px solid var(--line);
+  }
+
+  .profile-divider {
+    height: 1px;
+    background: var(--line);
+    margin: 22px 28px 0;
+  }
+
+  .profile-info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1px;
+    background: var(--line);
+    margin: 20px 28px 28px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .info-cell {
+    background: var(--panel);
+    padding: 16px 18px;
+  }
+
+  .info-cell .info-label {
+    display: block;
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin-bottom: 5px;
+  }
+
+  .info-cell .info-value {
+    font-size: 14.5px;
+    font-weight: 500;
+    color: var(--ink);
+    word-break: break-word;
+  }
+
+  @media (max-width: 600px) {
+    .profile-info-grid {
+      grid-template-columns: 1fr;
+    }
+    .profile-header {
+      padding: 0 18px;
+    }
+    .profile-badges {
+      padding: 14px 18px 0;
+    }
+    .profile-divider {
+      margin: 22px 18px 0;
+    }
+    .profile-info-grid {
+      margin: 20px 18px 24px;
+    }
+  }
+</style>
+
+<div class="profile-page">
+  <div class="profile-card">
+
+    <div class="profile-banner"></div>
+
+    <div class="profile-header">
+      <div class="profile-avatar-wrap">
+        {% if request.user.photo %}
+          <img src="{{ request.user.photo.url }}" alt="{{ request.user.get_full_name }}">
+        {% else %}
+          <div class="avatar large">{{ request.user.get_initials }}</div>
+        {% endif %}
+      </div>
+      <div class="profile-identity">
+        <h2>{{ request.user.get_full_name }}</h2>
+        <p class="username">@{{ request.user.username }}</p>
+      </div>
+    </div>
+
+    <div class="profile-badges">
+      <span class="badge-pill badge-role">{{ request.user.get_role_display }}</span>
+      <span class="badge-pill badge-role">{{ request.user.get_designation_display }}</span>
+      {% if request.user.department %}
+        <span class="badge-pill badge-dept">{{ request.user.department }}</span>
+      {% endif %}
+    </div>
+
+    <div class="profile-divider"></div>
+
+    <div class="profile-info-grid">
+      <div class="info-cell">
+        <span class="info-label">Employee ID</span>
+        <span class="info-value">{{ request.user.username|default:"—" }}</span>
+      </div>
+      <div class="info-cell">
+        <span class="info-label">Email</span>
+        <span class="info-value">{{ request.user.email|default:"—" }}</span>
+      </div>
+      <div class="info-cell">
+        <span class="info-label">Phone</span>
+        <span class="info-value">{{ request.user.phone_number|default:"—" }}</span>
+      </div>
+      <div class="info-cell">
+        <span class="info-label">Team</span>
+        <span class="info-value">{{ request.user.team.name|default:"No team" }}</span>
+      </div>
+      <div class="info-cell">
+        <span class="info-label">Role</span>
+        <span class="info-value">{{ request.user.get_role_display|default:"—" }}</span>
+      </div>
+      <div class="info-cell">
+        <span class="info-label">Designation</span>
+        <span class="info-value">{{ request.user.get_designation_display|default:"—" }}</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

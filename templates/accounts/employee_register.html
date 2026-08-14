@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Register employee — Task Tracker{% endblock %}
+{% block page_title %}Register employee{% endblock %}
+{% block page_sub %}Create a new employee account. Only an Admin and Manager can register employees.{% endblock %}
+
+{% block content %}
+<div class="card card-pad form-card">
+
+  <!-- <div class="banner-info">The Employee ID is generated automatically (e.g. E2E-004) once you submit this form — it can't be set manually.</div> -->
+
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+
+    <div class="field">
+      <label>{{ form.full_name.label }}</label>
+      {{ form.full_name }}
+      {% for error in form.full_name.errors %}<div class="alert alert-error">{{ error }}</div>{% endfor %}
+    </div>
+
+    <div class="field">
+      <label>{{ form.employee_id.label }}</label>
+      {{ form.employee_id }}
+      {% for error in form.employee_id.errors %}<div class="alert alert-error">{{ error }}</div>{% endfor %}
+    </div>
+
+    <div class="field">
+      <label>{{ form.email.label }}</label>
+      {{ form.email }}
+      {% for error in form.email.errors %}<div class="alert alert-error">{{ error }}</div>{% endfor %}
+    </div>
+
+    <div class="form-grid">
+      <div class="field">
+        <label>{{ form.role.label }}</label>
+        {{ form.role }}
+      </div>
+      <div class="field">
+        <label>{{ form.designation.label }}</label>
+        {{ form.designation }}
+        {% for error in form.designation.errors %}<div class="alert alert-error">{{ error }}</div>{% endfor %}
+      </div>
+    </div>
+
+    <div class="field">
+      <label>{{ form.team.label }}</label>
+      {{ form.team }}
+    </div>
+    <div class="field">
+      <label>{{ form.photo.label }}</label>
+      {{ form.photo }}
+      {% for error in form.photo.errors %}<div class="alert alert-error">{{ error }}</div>{% endfor %}
+    </div>
+
+    <div class="form-grid">
+      <div class="field">
+        <label>{{ form.password.label }}</label>
+        <div class="password-field">
+          {{ form.password }}
+          <button type="button" class="password-toggle-btn" data-toggle-password>👁</button>
+        </div>
+        {% for error in form.password.errors %}<div class="alert alert-error">{{ error }}</div>{% endfor %}
+      </div>
+      <div class="field">
+        <label>{{ form.confirm_password.label }}</label>
+        <div class="password-field">
+          {{ form.confirm_password }}
+          <button type="button" class="password-toggle-btn" data-toggle-password>👁</button>
+        </div>
+        {% for error in form.confirm_password.errors %}<div class="alert alert-error">{{ error }}</div>{% endfor %}
+      </div>
+    
+    </div>
+
+    {% if form.non_field_errors %}
+      <div class="alert alert-error">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    <div class="form-actions">
+      <a href="{% url 'employee_list' %}" class="btn btn-ghost">Cancel</a>
+      <button type="submit" class="btn btn-primary">Register employee</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

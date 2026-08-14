@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Edit task — Task Tracker{% endblock %}
+{% block page_title %}Edit task{% endblock %}
+{% block page_sub %}<a href="{% url 'task_detail' task.id %}" style="color:var(--accent-600); font-weight:600; text-decoration:none;">&larr; Back to task</a>{% endblock %}
+
+{% block content %}
+<div class="card card-pad form-card">
+  <form method="post">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+      <div class="alert alert-error">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    <div class="field">
+      <label for="{{ form.title.id_for_label }}">Title</label>
+      {{ form.title }}
+      {% if form.title.errors %}<div class="alert alert-error">{{ form.title.errors|striptags }}</div>{% endif %}
+    </div>
+
+    <div class="field">
+      <label for="{{ form.description.id_for_label }}">Description</label>
+      {{ form.description }}
+    </div>
+
+    <div class="form-grid">
+      <div class="field">
+        <label for="{{ form.priority.id_for_label }}">Priority</label>
+        {{ form.priority }}
+      </div>
+      <div class="field">
+        <label for="{{ form.assigned_to.id_for_label }}">Assigned to</label>
+        {{ form.assigned_to }}
+        {% if form.assigned_to.errors %}<div class="alert alert-error">{{ form.assigned_to.errors|striptags }}</div>{% endif %}
+      </div>
+      <div class="field">
+        <label for="{{ form.due_date.id_for_label }}">Due date</label>
+        {{ form.due_date }}
+        {% if form.due_date.errors %}<div class="alert alert-error">{{ form.due_date.errors|striptags }}</div>{% endif %}
+      </div>
+      <div class="field">
+        <label for="{{ form.due_time.id_for_label }}">Due time</label>
+        {{ form.due_time }}
+      </div>
+      <div class="field">
+        <label for="{{ form.reporting_to.id_for_label }}">Reporting to</label>
+        {{ form.reporting_to }}
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <a href="{% url 'task_detail' task.id %}" class="btn btn-ghost">Cancel</a>
+      <button type="submit" class="btn btn-primary">Save changes</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

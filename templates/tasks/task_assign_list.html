@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Task assign — Task Tracker{% endblock %}
+{% block page_title %}Task assign{% endblock %}
+{% block page_subtitle %}Your team, scoped to your role.{% endblock %}
+
+{% block content %}
+
+<h3 class="section-label">Team roster</h3>
+
+<div class="roster-list">
+  {% for emp in employees %}
+    <div class="roster-row">
+      <div class="roster-person">
+        {% if emp.photo %}
+        <img src="{{ emp.photo.url }}" alt="{{ emp.get_full_name }}" class="avatar-img">
+        {% else %}
+        <div class="avatar sm">
+          {{ emp.get_initials }}
+        </div>
+        {% endif %}
+        <div>
+          <div class="person-name">{{ emp.get_full_name|default:emp.username }} &middot; <span class="emp-code">{{ emp.employee_code }}</span></div>
+          <div class="person-role">{{ emp.get_role_display }} &mdash; {{ emp.team.name|default:"No team" }}</div>
+        </div>
+      </div>
+      <div class="roster-actions">
+        <span class="pill">{{ emp.open_count }} open</span>
+        <a href="{% url 'task_assign_form' emp.id %}" class="btn-primary">Assign task</a>
+      </div>
+    </div>
+  {% empty %}
+    <div class="roster-row">
+      <p style="color: var(--text-muted); margin: 0;">No team members visible for your role.</p>
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Edit {{ employee.get_full_name|default:employee.username }} — Task Tracker{% endblock %}
+{% block page_title %}Edit employee{% endblock %}
+{% block page_sub %}Employee ID {{ employee.employee_code }} — the ID itself can't be changed.{% endblock %}
+
+{% block content %}
+<div class="card card-pad form-card">
+  <form method="post">
+    {% csrf_token %}
+
+    <div class="field">
+      <label>{{ form.full_name.label }}</label>
+      {{ form.full_name }}
+      {% for error in form.full_name.errors %}<div class="alert alert-error">{{ error }}</div>{% endfor %}
+    </div>
+
+    <div class="field">
+      <label>{{ form.email.label }}</label>
+      {{ form.email }}
+      {% for error in form.email.errors %}<div class="alert alert-error">{{ error }}</div>{% endfor %}
+    </div>
+
+    <div class="form-grid">
+      <div class="field">
+        <label>{{ form.role.label }}</label>
+        {{ form.role }}
+      </div>
+      <div class="field">
+        <label>{{ form.designation.label }}</label>
+        {{ form.designation }}
+        {% for error in form.designation.errors %}<div class="alert alert-error">{{ error }}</div>{% endfor %}
+      </div>
+    </div>
+
+    <div class="form-grid">
+      <div class="field">
+        <label>{{ form.team.label }}</label>
+        {{ form.team }}
+      </div>
+      <div class="field">
+        <label>Status</label>
+        <label style="font-weight:400; text-transform:none; display:flex; align-items:center; gap:8px; margin-top:8px;">
+          {{ form.is_active }} Active (can sign in)
+        </label>
+      </div>
+    </div>
+
+    {% if form.non_field_errors %}
+      <div class="alert alert-error">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    <div class="form-actions">
+      <a href="{% url 'employee_detail' employee.pk %}" class="btn btn-ghost">Cancel</a>
+      <button type="submit" class="btn btn-primary">Save changes</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

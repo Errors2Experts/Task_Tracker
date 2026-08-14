@@ -1,0 +1,88 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Register — Task Tracker</title>
+  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+</head>
+<body>
+<div class="auth-shell">
+  <div class="auth-card">
+
+    <div class="auth-left">
+      <div class="brand">
+        <div class="brand-logo">T</div>
+        <div>
+          <div class="brand-name">Task Tracker</div>
+          <div class="brand-sub">E2E Solutions</div>
+        </div>
+      </div>
+
+      <div class="auth-feature">
+        <div class="auth-feature-title">Tell us who you are</div>
+        <div class="auth-feature-text">Your role and designation decide what you can see and assign — set them correctly so access lines up from day one.</div>
+      </div>
+      <div class="auth-feature">
+        <div class="auth-feature-title">Reporting-person roles</div>
+        <div class="auth-feature-text">Manager, HR and every Lead role fall under "Reporting person" — each still scoped to their own access rules. Admin accounts aren't created here; they're set up separately by IT.</div>
+      </div>
+      <div class="auth-feature">
+        <div class="auth-feature-title">Ready in a minute</div>
+        <div class="auth-feature-text">An admin will confirm your account before you can sign in for the first time.</div>
+      </div>
+
+      <!-- <div class="auth-footer">Built for <strong>CSC Anna Nagar</strong> operations &middot; Team B</div> -->
+    </div>
+
+    <div class="auth-right">
+      <div class="auth-form-wrap">
+        <h2>Create your account</h2>
+        <p class="auth-subtitle">Fill in your details to get access to the tracker.</p>
+
+        <form method="post">
+          {% csrf_token %}
+
+          <div class="field">
+            <label>{{ form.full_name.label }}</label>
+            {{ form.full_name }}
+            {% for error in form.full_name.errors %}<div class="alert alert-error">{{ error }}</div>{% endfor %}
+          </div>
+
+          <div class="field">
+            <label>{{ form.employee_id.label }}</label>
+            {{ form.employee_id }}
+            {% for error in form.employee_id.errors %}<div class="alert alert-error">{{ error }}</div>{% endfor %}
+          </div>
+
+          <div class="field">
+            <label>{{ form.role.label }}</label>
+            {{ form.role }}
+          </div>
+
+          <div class="field">
+            <label>{{ form.designation.label }}</label>
+            {{ form.designation }}
+          </div>
+
+          <div class="field">
+            <label>{{ form.password.label }}</label>
+            {{ form.password }}
+            {% for error in form.password.errors %}<div class="alert alert-error">{{ error }}</div>{% endfor %}
+          </div>
+
+          {% if form.non_field_errors %}
+            <div class="alert alert-error">{{ form.non_field_errors }}</div>
+          {% endif %}
+
+          <button type="submit" class="btn-primary" style="width: 100%;padding: 10px;border-radius: 5px;">Register</button>
+        </form>
+
+        <p class="auth-switch">Already have an account? <a href="{% url 'login' %}">Sign in</a></p>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

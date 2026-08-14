@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}My team — Task Tracker{% endblock %}
+{% block page_title %}My team{% endblock %}
+{% block page_sub %}{{ scope_message }}{% endblock %}
+
+{% block content %}
+
+<div class="filter-bar">
+  <form method="get">
+    <div class="field filter-field">
+      <label for="q">Search</label>
+      <input type="text" id="q" name="q" value="{{ query }}" placeholder="Name or Employee ID">
+    </div>
+    <button type="submit" class="btn btn-primary">Search</button>
+    <a href="{% url 'my_team' %}" class="btn btn-ghost">Reset</a>
+  </form>
+</div>
+
+<h3 class="section-label">Team roster</h3>
+
+<div class="roster-list">
+  {% for member in members %}
+    <div class="roster-row roster-row-link" onclick="window.location='{% url 'view_tasks' %}?assigned_to={{ member.id }}'" style="cursor:pointer;">
+      <div class="roster-person">
+        {% if member.photo %}
+        <img src="{{ member.photo.url }}" alt="{{ member.get_full_name }}" class="avatar-img">
+        {% else %}
+        <div class="avatar sm">
+          {{ member.get_initials }}
+        </div>
+        {% endif %}
+        <div>
+          <div class="person-name">{{ member.get_full_name|default:member.username }} &middot; <span class="emp-code">{{ member.employee_code }}</span></div>
+          <div class="person-role">
+            {{ member.get_role_display }}{% if member.designation %} &mdash; {{ member.get_designation_display }}{% endif %}
+            &mdash; {{ member.team.name|default:"No team" }}
+          </div>
+        </div>
+      </div>
+      <div class="roster-actions">
+        <span class="pill">{{ member.open_count }} open</span>
+        <a href="{% url 'task_assign_form' member.id %}" class="btn-primary" onclick="event.stopPropagation();">Assign task</a>
+      </div>
+    </div>
+  {% empty %}
+    <div class="roster-row">
+      <p style="color: var(--text-muted); margin: 0;">No team members visible for your role.</p>
+    </div>
+  {% endfor %}
+</div>
+
+{% include "partials/pagination.html" %}
+{% endblock %}
