@@ -1,10 +1,13 @@
 {% extends "base.html" %}
 {% block title %}{{ task.title }} — Task Tracker{% endblock %}
 {% block page_title %}Task detail{% endblock %}
-{% block page_sub %}<a href="{{ request.META.HTTP_REFERER|default:'/tasks/' }}"
-  style="color:var(--accent-600); font-weight:600; text-decoration:none;">
-  &larr; Back
-</a>{% endblock %}
+{% block page_sub %}
+{% if next_url %}
+<a href="{{ next_url }}" style="color:var(--accent-600); font-weight:600; text-decoration:none;">&larr; Back</a>
+{% else %}
+<a href="javascript:history.back()" style="color:var(--accent-600); font-weight:600; text-decoration:none;">&larr; Back</a>
+{% endif %}
+{% endblock %}
 
 {% block content %}
 <div class="task-detail-header">
@@ -108,6 +111,7 @@
       <form method="post">
         {% csrf_token %}
         <input type="hidden" name="section" value="status">
+        <input type="hidden" name="next" value="{{ next_url }}">
         <div class="form-grid">
           <div class="field">
             <label for="id_status">Status</label>
@@ -154,6 +158,7 @@
       <form method="post">
         {% csrf_token %}
         <input type="hidden" name="section" value="comment">
+        <input type="hidden" name="next" value="{{ next_url }}">
         <div class="field">
           {{ comment_form.body }}
           {% if comment_form.body.errors %}<div class="alert alert-error">{{ comment_form.body.errors|striptags }}</div>
@@ -180,6 +185,7 @@
             {% if can_edit or attachment.uploaded_by_id == request.user.id %}
             <form method="post" action="{% url 'task_delete_attachment' task.id attachment.id %}">
               {% csrf_token %}
+              <input type="hidden" name="next" value="{{ next_url }}">
               <button type="submit" class="remove-row" aria-label="Remove attachment"
                 data-confirm="Remove this attachment? This can't be undone.">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

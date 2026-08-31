@@ -14,7 +14,7 @@
   {% for task in tasks %}
     <div class="task-card">
       <div class="task-card-main">
-        <div class="task-card-title"><a href="{% url 'task_detail' task.id %}" style="color:inherit;">{{ task.title }}</a>
+        <div class="task-card-title"><a href="{% url 'task_detail' task.id %}?next={% url 'my_tasks' %}" style="color:inherit;">{{ task.title }}</a>
           {% if task.team_lead_approval_status == "APPROVED" %}
               <span class="pill" style="background:var(--success-bg); color:var(--success);" title="Cross-team assignment approved by the target team's lead">Team Lead Approved</span>
           {% endif %}

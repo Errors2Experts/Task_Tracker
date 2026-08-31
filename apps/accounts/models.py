@@ -52,7 +52,10 @@ class Designation(models.TextChoices):
     DIGITAL_MARKETING_EXECUTIVE = "DIGITAL_MARKETING_EXECUTIVE", "Digital Marketing Executive"
     TRAINER = "TRAINER", "Trainer"
     BDE = "BDE", "Business Development Executive"
+    UI_UX_DESIGNER = "UI/UX_DESIGNER","UI/UX Designer"
     INTERN = "INTERN", "Intern"
+
+    FOUNDER_TECHNICAL_MENTOR = ("FOUNDER_TECHNICAL_MENTOR","Founder & Technical Mentor",)
 
 
 class User(AbstractUser):

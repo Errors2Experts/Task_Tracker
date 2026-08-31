@@ -7,6 +7,27 @@ from .models import User, Role, Designation, Team
 # meaningfully optional for that role the way it is for Employee/Intern.
 _DESIGNATION_REQUIRED_ROLES = (Role.REPORTING_PERSON,)
 
+from django import forms
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
+
+class ProfileEditForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ['first_name', 'last_name', 'email']
+        widgets = {
+            'first_name': forms.TextInput(attrs={'placeholder': 'First name'}),
+            'last_name': forms.TextInput(attrs={'placeholder': 'Last name'}),
+            'email': forms.EmailInput(attrs={'placeholder': 'Email'}),
+        }
+
+
+class ProfilePhotoForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ['photo']
 
 class EmployeeLoginForm(AuthenticationForm):
     """Same as Django's default login form, just labelled to match the UI."""

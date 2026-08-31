@@ -5,13 +5,24 @@
 
 {% block content %}
 <div class="card card-pad form-card">
-  <form method="post">
+  <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
 
     <div class="field">
       <label>{{ form.full_name.label }}</label>
       {{ form.full_name }}
       {% for error in form.full_name.errors %}<div class="alert alert-error">{{ error }}</div>{% endfor %}
+    </div>
+
+    <div class="field">
+      <label>Photo</label>
+      {% if employee.photo %}
+        <div style="margin-bottom:8px;">
+          <img src="{{ employee.photo.url }}" alt="Current photo" style="width:64px; height:64px; border-radius:50%; object-fit:cover;">
+        </div>
+      {% endif %}
+      {{ form.photo }}
+      {% for error in form.photo.errors %}<div class="alert alert-error">{{ error }}</div>{% endfor %}
     </div>
 
     <div class="field">

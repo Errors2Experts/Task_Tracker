@@ -17,6 +17,7 @@ from django.conf import settings
 from django.views.decorators.http import require_GET, require_POST
 
 import cloudinary.uploader
+from django.urls import reverse
 
 from apps.accounts.models import Designation, Role
 from apps.accounts.permissions import (
@@ -589,6 +590,12 @@ def update_task_status(request, task_id):
 
     return redirect("my_tasks")
 
+def _task_detail_redirect(request, task):
+    next_url = request.POST.get("next", "")
+    url = reverse("task_detail", args=[task.id])
+    if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
+        url += f"?next={next_url}"
+    return redirect(url)
 
 @login_required
 def task_detail(request, task_id):
@@ -599,6 +606,8 @@ def task_detail(request, task_id):
         Task.objects.select_related("team", "assigned_to", "reporting_to", "created_by"),
         pk=task_id,
     )
+
+    next_url = request.GET.get("next", "")
 
     if not can_view_task(request.user, task):
         raise PermissionDenied("You don't have access to this task.")
@@ -635,7 +644,7 @@ def task_detail(request, task_id):
                         detail=f"{old_progress}% \u2192 {task.progress}%",
                     )
                 messages.success(request, "Task updated.")
-                return redirect("task_detail", task_id=task.id)
+                return _task_detail_redirect(request, task)
 
         elif section == "comment" and can_collaborate:
             comment_form = TaskCommentForm(request.POST)
@@ -645,7 +654,7 @@ def task_detail(request, task_id):
                 comment_form.save()
                 TaskActivity.objects.create(task=task, actor=request.user, verb="COMMENTED")
                 messages.success(request, "Comment added.")
-                return redirect("task_detail", task_id=task.id)
+                return _task_detail_redirect(request, task)
 
         elif section == "attachment" and can_collaborate:
             attachment_form = TaskAttachmentForm(request.POST, request.FILES)
@@ -661,12 +670,13 @@ def task_detail(request, task_id):
                     task=task, actor=request.user, verb="ATTACHMENT_ADDED", detail=attachment.original_filename,
                 )
                 messages.success(request, "Attachment uploaded.")
-                return redirect("task_detail", task_id=task.id)
+                return _task_detail_redirect(request, task)
         else:
             return HttpResponseForbidden("You don't have permission to do that.")
 
     context = {
         "task": task,
+        "next_url": next_url,
         "is_overdue": task.is_overdue,
         "comments": task.comments.select_related("author"),
         "attachments": task.attachments.select_related("uploaded_by"),
@@ -886,7 +896,11 @@ def notification_mark_read(request, notification_id):
         notification.is_read = True
         notification.save(update_fields=["is_read"])
         if notification.task_id:
-            return redirect("task_detail", task_id=notification.task_id)
+            next_url = request.POST.get("next", "")
+            redirect_url = reverse("task_detail", args=[notification.task_id])
+            if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
+                redirect_url += f"?next={next_url}"
+            return redirect(redirect_url)
     return redirect("notifications")
 
 

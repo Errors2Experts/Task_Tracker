@@ -62,7 +62,7 @@
            {% endif %}
         <div>
           <div class="person-name">
-            <a href="{% url 'task_detail' task.id %}" style="color:inherit;">{{ task.title }}</a>
+            <a href="{% url 'task_detail' task.id %}?next={% url 'view_tasks' %}" style="color:inherit;">{{ task.title }}</a>
             {% if task.team_lead_approval_status == "APPROVED" %}
               <span class="pill" style="background:var(--success-bg); color:var(--success);" title="Cross-team assignment approved by the target team's lead">Team Lead Approved</span>
             {% endif %}

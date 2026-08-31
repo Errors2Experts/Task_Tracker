@@ -9,6 +9,8 @@ from django.shortcuts import render, redirect, get_object_or_404
 
 from .forms import RegisterForm, EmployeeRegistrationForm, EmployeeEditForm
 from .models import Role, Designation, Team
+from .forms import ProfileEditForm, ProfilePhotoForm
+from apps.tasks.models import Task, TaskStatus
 
 User = get_user_model()
 
@@ -150,7 +152,7 @@ def employee_edit(request, pk):
     employee = get_object_or_404(_employee_queryset(), pk=pk)
 
     if request.method == "POST":
-        form = EmployeeEditForm(request.POST, instance=employee)
+        form = EmployeeEditForm(request.POST,request.FILES, instance=employee)
         if form.is_valid():
             form.save()
             messages.success(
@@ -163,9 +165,68 @@ def employee_edit(request, pk):
 
     return render(request, "accounts/employee_edit.html", {"form": form, "employee": employee})
 
+
+def _task_counts_for(user):
+    tasks = Task.objects.filter(assigned_to=user)
+    completed = tasks.filter(status=TaskStatus.COMPLETED).count()
+    active = tasks.exclude(status__in=[TaskStatus.COMPLETED, TaskStatus.CANCELLED]).count()
+    return completed, active
+
+
+def _team_member_count_for(user):
+    if not user.team_id:
+        return None
+    return User.objects.filter(team_id=user.team_id).count()
+
 @login_required
 def profile(request):
-    return render(request, "accounts/profile.html")
+    is_admin = request.user.is_superuser or request.user.is_staff
+
+    if request.method == "POST":
+        if 'photo' in request.FILES:
+            if not is_admin:
+                messages.error(request, "You don't have permission to change the profile photo.")
+                return redirect('profile')
+
+            photo_form = ProfilePhotoForm(request.POST, request.FILES, instance=request.user)
+            if photo_form.is_valid():
+                photo_form.save()
+                messages.success(request, "Profile photo updated.")
+            else:
+                messages.error(request, "Couldn't update photo. Please upload a valid image.")
+            return redirect('profile')
+
+        if not is_admin:
+            messages.error(request, "You don't have permission to edit this profile.")
+            return redirect('profile')
+
+        edit_form = ProfileEditForm(request.POST, instance=request.user)
+        if edit_form.is_valid():
+            edit_form.save()
+            messages.success(request, "Profile updated successfully.")
+            return redirect('profile')
+        else:
+            messages.error(request, "Please fix the errors below.")
+            tasks_completed_count, tasks_active_count = _task_counts_for(request.user)
+            return render(request, "accounts/profile.html", {
+                "edit_form": edit_form,
+                "open_edit_modal": True,
+                "is_admin": is_admin,
+                "tasks_completed_count": tasks_completed_count,
+                "tasks_active_count": tasks_active_count,
+                "team_member_count": _team_member_count_for(request.user),
+            })
+
+    edit_form = ProfileEditForm(instance=request.user)
+    tasks_completed_count, tasks_active_count = _task_counts_for(request.user)
+
+    return render(request, "accounts/profile.html", {
+        "edit_form": edit_form,
+        "is_admin": is_admin,
+        "tasks_completed_count": tasks_completed_count,
+        "tasks_active_count": tasks_active_count,
+        "team_member_count": _team_member_count_for(request.user),
+    })
 
 
 @login_required

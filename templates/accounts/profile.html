@@ -4,84 +4,216 @@
 {% block page_title %}My Profile{% endblock %}
 
 {% block content %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&display=swap" rel="stylesheet">
+
 <style>
   .profile-page {
     --ink: #14213d;
-    --ink-soft: #4b5566;
-    --line: #e6e9ef;
+    --ink-soft: #5b6472;
+    --line: #ebedf2;
     --panel: #ffffff;
     --accent: #2f6fed;
     --accent-soft: #eaf1ff;
-    --surface: #f6f7fb;
+    --surface: #f7f8fb;
+    --online: #2ec27e;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
   }
 
-  .profile-card {
-    background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: 14px;
-    overflow: hidden;
-    max-width: 880px;
+  .profile-page * {
+    box-sizing: border-box;
+  }
+
+  .ig-shell {
+    max-width: 900px;
     margin: 0 auto;
   }
 
-  .profile-banner {
-    height: 50px;
-    background: linear-gradient(120deg, #14213d 0%, #2f6fed 100%);
-    position: relative;
-  }
-
-  .profile-header {
+  .ig-header {
     display: flex;
-    align-items: flex-end;
-    gap: 20px;
-    padding: 28px 28px;
-    
+    align-items: center;
+    gap: 44px;
+    padding: 32px 8px 28px;
+    border-bottom: 1px solid var(--line);
+    flex-wrap: wrap;
   }
 
-  .profile-avatar-wrap {
+  .ig-avatar-wrap {
+    position: relative;
+    width: 132px;
+    height: 132px;
     flex-shrink: 0;
   }
 
-  .profile-avatar-wrap img,
-  .profile-avatar-wrap .avatar.large {
-    width: 96px;
-    height: 96px;
+  .ig-avatar-ring {
+    position: absolute;
+    inset: -4px;
+    border-radius: 50%;
+    background: conic-gradient(from 180deg, var(--online), #7be3b8, var(--online));
+    padding: 3px;
+  }
+
+  .ig-avatar-ring::before {
+    content: "";
+    position: absolute;
+    inset: 3px;
+    border-radius: 50%;
+    background: var(--panel);
+  }
+
+  .ig-avatar-wrap img,
+  .ig-avatar-wrap .avatar.large {
+    position: relative;
+    width: 132px;
+    height: 132px;
     border-radius: 50%;
     object-fit: cover;
-    border: 4px solid var(--panel);
     background: var(--accent-soft);
     color: var(--accent);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 30px;
+    font-family: "Sora", sans-serif;
+    font-size: 42px;
+    font-weight: 700;
+    z-index: 1;
+  }
+
+  .ig-status-dot {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--online);
+    border: 3px solid var(--panel);
+    z-index: 3;
+  }
+
+  .camera-btn {
+    position: absolute;
+    bottom: 4px;
+    left: 4px;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: var(--ink);
+    color: #fff;
+    border: 3px solid var(--panel);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    cursor: pointer;
+    z-index: 4;
+    transition: transform 0.15s ease, background 0.15s ease;
+  }
+
+  .camera-btn:hover {
+    background: var(--accent);
+    transform: scale(1.06);
+  }
+
+  .camera-btn input[type="file"] {
+    display: none;
+  }
+
+  .ig-identity {
+    flex: 1;
+    min-width: 260px;
+  }
+
+  .ig-name-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 4px;
+  }
+
+  .ig-name-row h2 {
+    margin: 0;
+    font-family: "Sora", sans-serif;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+
+  .edit-profile-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 13.5px;
     font-weight: 600;
-    box-shadow: 0 2px 6px rgba(20, 33, 61, 0.12);
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
   }
 
-  .profile-identity {
-    padding-bottom: 10px;
+  .edit-profile-btn:hover {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent);
   }
 
-  .profile-identity h2 {
-    margin: 0 0 2px;
-    font-size: 22px;
+  .ig-username {
+    margin: 0 0 18px;
+    color: var(--ink-soft);
+    font-size: 14.5px;
+  }
+
+  .ig-status-label {
+    color: var(--online);
+    font-weight: 600;
+  }
+
+  .ig-stats {
+    display: flex;
+    gap: 40px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+  }
+
+  .ig-stat {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .ig-stat .stat-num {
+    font-family: "Sora", sans-serif;
+    font-size: 19px;
     font-weight: 700;
     color: var(--ink);
     line-height: 1.2;
   }
 
-  .profile-identity .username {
-    margin: 0;
+  .ig-stat .stat-label {
+    font-size: 12.5px;
     color: var(--ink-soft);
-    font-size: 14px;
   }
 
-  .profile-badges {
+  .ig-bio {
+    font-size: 14.5px;
+    color: var(--ink);
+    line-height: 1.6;
+    max-width: 520px;
+  }
+
+  .ig-bio strong {
+    font-weight: 700;
+  }
+
+  .ig-badges {
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
-    padding: 14px 28px 0;
+    margin-top: 12px;
   }
 
   .badge-pill {
@@ -90,7 +222,7 @@
     gap: 6px;
     padding: 5px 12px;
     border-radius: 999px;
-    font-size: 12.5px;
+    font-size: 12px;
     font-weight: 600;
     letter-spacing: 0.2px;
   }
@@ -106,10 +238,43 @@
     border: 1px solid var(--line);
   }
 
-  .profile-divider {
-    height: 1px;
-    background: var(--line);
-    margin: 22px 28px 0;
+  .ig-tabs {
+    display: flex;
+    justify-content: center;
+    gap: 60px;
+    border-bottom: 1px solid var(--line);
+    margin-top: 4px;
+  }
+
+  .ig-tab {
+    padding: 16px 4px;
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    background: none;
+    border: none;
+    border-top: 1px solid transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .ig-tab.active {
+    color: var(--ink);
+    border-top: 1px solid var(--ink);
+    margin-top: -1px;
+  }
+
+  .ig-tab-panel {
+    display: none;
+    padding: 28px 8px 40px;
+  }
+
+  .ig-tab-panel.active {
+    display: block;
   }
 
   .profile-info-grid {
@@ -117,7 +282,6 @@
     grid-template-columns: repeat(2, 1fr);
     gap: 1px;
     background: var(--line);
-    margin: 20px 28px 28px;
     border: 1px solid var(--line);
     border-radius: 10px;
     overflow: hidden;
@@ -125,7 +289,7 @@
 
   .info-cell {
     background: var(--panel);
-    padding: 16px 18px;
+    padding: 18px 20px;
   }
 
   .info-cell .info-label {
@@ -145,81 +309,369 @@
     word-break: break-word;
   }
 
-  @media (max-width: 600px) {
+  /* ===== Modal (self-contained, no Bootstrap JS dependency) ===== */
+  .cust-modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(20, 33, 61, 0.55);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 1050;
+    align-items: center;
+    justify-content: center;
+    animation: cust-fade-in 0.15s ease;
+  }
+
+  @keyframes cust-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .cust-modal-overlay.show {
+    display: flex;
+  }
+
+  .cust-modal-box {
+    background: var(--panel);
+    border-radius: 16px;
+    border: 1px solid var(--line);
+    width: 100%;
+    max-width: 460px;
+    margin: 20px;
+    box-shadow: 0 20px 60px rgba(20, 33, 61, 0.28);
+    animation: cust-pop-in 0.18s ease;
+  }
+
+  @keyframes cust-pop-in {
+    from { opacity: 0; transform: translateY(8px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .cust-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    background: linear-gradient(120deg, #14213d 0%, #2f6fed 100%);
+    border-radius: 16px 16px 0 0;
+  }
+
+  .cust-modal-header h5 {
+    margin: 0;
+    font-family: "Sora", sans-serif;
+    font-weight: 700;
+    color: #ffffff;
+    font-size: 18px;
+  }
+
+  .cust-modal-close {
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    font-size: 18px;
+    line-height: 1;
+    color: #ffffff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s ease;
+  }
+
+  .cust-modal-close:hover {
+    background: rgba(255, 255, 255, 0.28);
+  }
+
+  .cust-modal-body {
+    padding: 24px;
+    background: var(--surface);
+  }
+
+  .cust-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 16px 24px;
+    background: var(--surface);
+    border-top: 1px solid var(--line);
+    border-radius: 0 0 16px 16px;
+  }
+
+  .cust-form-group {
+    margin-bottom: 16px;
+  }
+
+  .cust-form-group label {
+    display: block;
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin-bottom: 6px;
+  }
+
+  .cust-form-group input {
+    width: 100%;
+    padding: 9px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: var(--panel);
+    font-size: 14px;
+  }
+
+  .cust-form-group input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(47, 111, 237, 0.15);
+  }
+
+  .cust-error {
+    color: #d9534f;
+    font-size: 12.5px;
+    margin-top: 4px;
+  }
+
+  .btn-cancel {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: var(--panel);
+    color: var(--ink);
+    font-weight: 600;
+    font-size: 13.5px;
+    cursor: pointer;
+  }
+
+  .btn-cancel:hover {
+    background: var(--surface);
+  }
+
+  .btn-save {
+    padding: 8px 18px;
+    border-radius: 8px;
+    border: none;
+    background: var(--accent);
+    color:black;
+    font-weight: 600;
+    font-size: 13.5px;
+    cursor: pointer;
+  }
+
+  .btn-save:hover {
+    background: #1e56c9;
+    color: #fff;
+  }
+
+  @media (max-width: 640px) {
+    .ig-header {
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 24px 16px 20px;
+    }
+    .ig-name-row {
+      justify-content: center;
+    }
+    .ig-stats {
+      justify-content: center;
+    }
+    .ig-bio {
+      max-width: 100%;
+    }
+    .ig-badges {
+      justify-content: center;
+    }
+    .ig-tabs {
+      gap: 32px;
+    }
     .profile-info-grid {
       grid-template-columns: 1fr;
-    }
-    .profile-header {
-      padding: 0 18px;
-    }
-    .profile-badges {
-      padding: 14px 18px 0;
-    }
-    .profile-divider {
-      margin: 22px 18px 0;
-    }
-    .profile-info-grid {
-      margin: 20px 18px 24px;
     }
   }
 </style>
 
 <div class="profile-page">
-  <div class="profile-card">
+  <div class="ig-shell">
 
-    <div class="profile-banner"></div>
-
-    <div class="profile-header">
-      <div class="profile-avatar-wrap">
+    <div class="ig-header">
+      <div class="ig-avatar-wrap">
+        <div class="ig-avatar-ring"></div>
         {% if request.user.photo %}
           <img src="{{ request.user.photo.url }}" alt="{{ request.user.get_full_name }}">
         {% else %}
           <div class="avatar large">{{ request.user.get_initials }}</div>
         {% endif %}
+        <span class="ig-status-dot" title="Active now"></span>
+
+        {% if is_admin %}
+          <form method="post" enctype="multipart/form-data" id="photoUploadForm">
+            {% csrf_token %}
+            <label class="camera-btn" title="Change photo">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+              <input type="file" name="photo" accept="image/*" id="photoInput" onchange="document.getElementById('photoUploadForm').submit();">
+            </label>
+          </form>
+        {% endif %}
       </div>
-      <div class="profile-identity">
-        <h2>{{ request.user.get_full_name }}</h2>
-        <p class="username">@{{ request.user.username }}</p>
+
+      <div class="ig-identity">
+        <div class="ig-name-row">
+          <h2>{{ request.user.get_full_name }}</h2>
+          {% if is_admin %}
+            <button type="button" class="edit-profile-btn" onclick="document.getElementById('editProfileOverlay').classList.add('show');">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4z"/>
+              </svg>
+              Edit Profile
+            </button>
+          {% endif %}
+        </div>
+        <p class="ig-username">@{{ request.user.username }} &middot; <span class="ig-status-label">Active now</span></p>
+
+        <div class="ig-stats">
+          <div class="ig-stat">
+            <span class="stat-num">{{ tasks_completed_count|default:"0" }}</span>
+            <span class="stat-label">Tasks completed</span>
+          </div>
+          <div class="ig-stat">
+            <span class="stat-num">{{ tasks_active_count|default:"0" }}</span>
+            <span class="stat-label">Active tasks</span>
+          </div>
+          <div class="ig-stat">
+            <span class="stat-num">{{ team_member_count|default:"—" }}</span>
+            <span class="stat-label">Team size</span>
+          </div>
+        </div>
+
+        <div class="ig-bio">
+          <strong>{{ request.user.get_designation_display }}</strong> at {{ request.user.department|default:"E2E Solutions" }}.
+          {% if request.user.team %}Part of <strong>{{ request.user.team.name }}</strong>.{% endif %}
+        </div>
+
+        <div class="ig-badges">
+          <span class="badge-pill badge-role">{{ request.user.get_role_display }}</span>
+          {% if request.user.department %}
+            <span class="badge-pill badge-dept">{{ request.user.department }}</span>
+          {% endif %}
+        </div>
       </div>
     </div>
 
-    <div class="profile-badges">
-      <span class="badge-pill badge-role">{{ request.user.get_role_display }}</span>
-      <span class="badge-pill badge-role">{{ request.user.get_designation_display }}</span>
-      {% if request.user.department %}
-        <span class="badge-pill badge-dept">{{ request.user.department }}</span>
-      {% endif %}
+    <div class="ig-tabs">
+      <button type="button" class="ig-tab active" data-tab="overview" onclick="switchTab('overview')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+        Overview
+      </button>
+      <button type="button" class="ig-tab" data-tab="contact" onclick="switchTab('contact')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+        </svg>
+        Contact
+      </button>
     </div>
 
-    <div class="profile-divider"></div>
+    <div class="ig-tab-panel active" id="tab-overview">
+      <div class="profile-info-grid">
+        <div class="info-cell">
+          <span class="info-label">Employee ID</span>
+          <span class="info-value">{{ request.user.username|default:"—" }}</span>
+        </div>
+        <div class="info-cell">
+          <span class="info-label">Role</span>
+          <span class="info-value">{{ request.user.get_role_display|default:"—" }}</span>
+        </div>
+        <div class="info-cell">
+          <span class="info-label">Designation</span>
+          <span class="info-value">{{ request.user.get_designation_display|default:"—" }}</span>
+        </div>
+        <div class="info-cell">
+          <span class="info-label">Team</span>
+          <span class="info-value">{{ request.user.team.name|default:"No team" }}</span>
+        </div>
+      </div>
+    </div>
 
-    <div class="profile-info-grid">
-      <div class="info-cell">
-        <span class="info-label">Employee ID</span>
-        <span class="info-value">{{ request.user.username|default:"—" }}</span>
-      </div>
-      <div class="info-cell">
-        <span class="info-label">Email</span>
-        <span class="info-value">{{ request.user.email|default:"—" }}</span>
-      </div>
-      <div class="info-cell">
-        <span class="info-label">Phone</span>
-        <span class="info-value">{{ request.user.phone_number|default:"—" }}</span>
-      </div>
-      <div class="info-cell">
-        <span class="info-label">Team</span>
-        <span class="info-value">{{ request.user.team.name|default:"No team" }}</span>
-      </div>
-      <div class="info-cell">
-        <span class="info-label">Role</span>
-        <span class="info-value">{{ request.user.get_role_display|default:"—" }}</span>
-      </div>
-      <div class="info-cell">
-        <span class="info-label">Designation</span>
-        <span class="info-value">{{ request.user.get_designation_display|default:"—" }}</span>
+    <div class="ig-tab-panel" id="tab-contact">
+      <div class="profile-info-grid">
+        <div class="info-cell">
+          <span class="info-label">Email</span>
+          <span class="info-value">{{ request.user.email|default:"—" }}</span>
+        </div>
+        <div class="info-cell">
+          <span class="info-label">Phone</span>
+          <span class="info-value">{{ request.user.phone_number|default:"—" }}</span>
+        </div>
       </div>
     </div>
 
   </div>
 </div>
+
+<!-- Edit Profile Modal -->
+<div class="cust-modal-overlay{% if open_edit_modal %} show{% endif %}" id="editProfileOverlay">
+  <div class="cust-modal-box">
+    <form method="post">
+      {% csrf_token %}
+      <div class="cust-modal-header">
+        <h5>Edit Profile</h5>
+        <button type="button" class="cust-modal-close" onclick="document.getElementById('editProfileOverlay').classList.remove('show');">&times;</button>
+      </div>
+      <div class="cust-modal-body">
+        <div class="cust-form-group">
+          <label>{{ edit_form.first_name.label }}</label>
+          {{ edit_form.first_name }}
+          {% if edit_form.first_name.errors %}
+            <div class="cust-error">{{ edit_form.first_name.errors.0 }}</div>
+          {% endif %}
+        </div>
+        <div class="cust-form-group">
+          <label>{{ edit_form.last_name.label }}</label>
+          {{ edit_form.last_name }}
+          {% if edit_form.last_name.errors %}
+            <div class="cust-error">{{ edit_form.last_name.errors.0 }}</div>
+          {% endif %}
+        </div>
+        <div class="cust-form-group">
+          <label>{{ edit_form.email.label }}</label>
+          {{ edit_form.email }}
+          {% if edit_form.email.errors %}
+            <div class="cust-error">{{ edit_form.email.errors.0 }}</div>
+          {% endif %}
+        </div>
+      </div>
+      <div class="cust-modal-footer">
+        <button type="button" class="btn-cancel" onclick="document.getElementById('editProfileOverlay').classList.remove('show');">Cancel</button>
+        <button type="submit" class="btn-primary btn-save">Save changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function switchTab(name) {
+    document.querySelectorAll('.ig-tab').forEach(function (btn) {
+      btn.classList.toggle('active', btn.dataset.tab === name);
+    });
+    document.querySelectorAll('.ig-tab-panel').forEach(function (panel) {
+      panel.classList.toggle('active', panel.id === 'tab-' + name);
+    });
+  }
+
+  document.getElementById('editProfileOverlay').addEventListener('click', function (e) {
+    if (e.target === this) {
+      this.classList.remove('show');
+    }
+  });
+</script>
 {% endblock %}
