@@ -552,8 +552,8 @@
         </div>
 
         <div class="ig-bio">
-          <strong>{{ request.user.get_designation_display }}</strong> at {{ request.user.department|default:"E2E Solutions" }}.
-          {% if request.user.team %}Part of <strong>{{ request.user.team.name }}</strong>.{% endif %}
+          <strong>{{ request.user.designations_display }}</strong> at {{ request.user.department|default:"E2E Solutions" }}.
+          {% if request.user.team %}Part of <strong>{{ request.user.teams_display }}</strong>.{% endif %}
         </div>
 
         <div class="ig-badges">
@@ -593,11 +593,11 @@
         </div>
         <div class="info-cell">
           <span class="info-label">Designation</span>
-          <span class="info-value">{{ request.user.get_designation_display|default:"—" }}</span>
+          <span class="info-value">{{ request.user.designations_display }}</span>
         </div>
         <div class="info-cell">
           <span class="info-label">Team</span>
-          <span class="info-value">{{ request.user.team.name|default:"No team" }}</span>
+          <span class="info-value">{{ request.user.teams_display }}</span>
         </div>
       </div>
     </div>

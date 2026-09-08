@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.core.validators import FileExtensionValidator, MaxValueValidator, MinValueValidator
 from django.db import models
-from apps.accounts.models import Team
+from apps.accounts.models import Department, Designation, Team
 from cloudinary.models import CloudinaryField
 from django_ckeditor_5.fields import CKEditor5Field
 
@@ -62,6 +62,15 @@ class Task(models.Model):
     )
 
     team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="tasks")
+
+    # Which of the assignee's (possibly several) designations/departments
+    # this particular task was assigned under — set from the Designation
+    # dropdown on the "Assign a task" page (see tasks/views.py
+    # task_assign_form). Optional/blank for tasks created before this field
+    # existed, or where the assignee only ever had one assignment anyway.
+    designation = models.CharField(max_length=30, choices=Designation.choices, blank=True, default="")
+    department = models.CharField(max_length=20, choices=Department.choices, blank=True, default="")
+
     assigned_to = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True,
         related_name="assigned_tasks"
@@ -118,6 +127,9 @@ class Task(models.Model):
         # Compared against what's actually in the database (not just the
         # in-memory object) so the two rules above don't fight each other
         # when only one of the two fields was actually touched.
+        if self.team_id and not self.department:
+            self.department = self.team.department
+
         previous = Task.objects.filter(pk=self.pk).values("status", "progress").first() if self.pk else None
 
         if previous is None:

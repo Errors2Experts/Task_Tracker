@@ -17,6 +17,7 @@
       <label for="q">Search</label>
       <input type="text" id="q" name="q" value="{{ query }}" placeholder="Title or assignee">
     </div>
+    
     <div class="field filter-field">
       <label for="status">Status</label>
       <select id="status" name="status">
@@ -73,7 +74,7 @@
             {% else %}
             Unassigned
             {% endif %}
-            &mdash; {{ task.team.name|default:"No team" }}
+            &mdash; {{ task.team.name|default:"No team" }}{% if task.designation %} &middot; {{ task.get_designation_display }}{% endif %}
             {% if task.due_date %}&middot; Due {{ task.due_date|date:"d M" }}{% if task.due_time %}, {{ task.due_time|time:"g:i A" }}{% endif %}{% endif %}
             &middot; {{ task.progress }}% complete
   

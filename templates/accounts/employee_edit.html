@@ -17,12 +17,13 @@
     <div class="field">
       <label>Photo</label>
       {% if employee.photo %}
-        <div style="margin-bottom:8px;">
-          <img src="{{ employee.photo.url }}" alt="Current photo" style="width:64px; height:64px; border-radius:50%; object-fit:cover;">
+        <div style="margin-top:8px;">
+          <img src="{{ employee.photo.url }}" alt="Employee photo" style="max-width: 120px; max-height: 120px; border-radius: var(--radius-sm);">
         </div>
       {% endif %}
       {{ form.photo }}
       {% for error in form.photo.errors %}<div class="alert alert-error">{{ error }}</div>{% endfor %}
+    
     </div>
 
     <div class="field">
@@ -37,23 +38,75 @@
         {{ form.role }}
       </div>
       <div class="field">
-        <label>{{ form.designation.label }}</label>
-        {{ form.designation }}
-        {% for error in form.designation.errors %}<div class="alert alert-error">{{ error }}</div>{% endfor %}
-      </div>
-    </div>
-
-    <div class="form-grid">
-      <div class="field">
-        <label>{{ form.team.label }}</label>
-        {{ form.team }}
-      </div>
-      <div class="field">
         <label>Status</label>
         <label style="font-weight:400; text-transform:none; display:flex; align-items:center; gap:8px; margin-top:8px;">
           {{ form.is_active }} Active (can sign in)
         </label>
       </div>
+    </div>
+
+    <div class="field">
+      <label>{{ form.reporting_person.label }}</label>
+      {{ form.reporting_person }}
+      <small style="color: var(--text-400);">{{ form.reporting_person.help_text }}</small>
+    </div>
+
+    <div class="field">
+  <label style="font-weight:700; text-transform:uppercase; font-size:11px; letter-spacing:.06em; color:var(--accent-600); border-bottom:1px solid var(--border); padding-bottom:8px; display:block;">
+    Password
+  </label>
+
+  <p style="color: var(--text-400); font-size: 12.5px; margin: 4px 0 10px;">
+    {{ form.password.help_text }}
+  </p>
+
+  <div class="password-field">
+    {{ form.password }}
+    <button
+      type="button"
+      class="password-toggle-btn"
+      id="edit-password-toggle"
+      aria-label="Show password"
+    >👁</button>
+  </div>
+
+  {% for error in form.password.errors %}
+    <div class="alert alert-error">{{ error }}</div>
+  {% endfor %}
+</div>
+
+    <div class="field">
+      <label style="font-weight:700; text-transform:uppercase; font-size:11px; letter-spacing:.06em; color:var(--accent-600); border-bottom:1px solid var(--border); padding-bottom:8px; display:block;">
+        Designations &amp; Teams
+      </label>
+      <p style="color: var(--text-400); font-size: 12.5px; margin: 4px 0 10px;">
+        An employee can hold more than one designation — click "Add another designation" for each extra one.
+      </p>
+      {{ assignment_formset.management_form }}
+      <div id="assignment-rows">
+        {% for row in assignment_formset %}
+          <div class="assignment-row" data-assignment-row>
+            {% for hidden in row.hidden_fields %}{{ hidden }}{% endfor %}
+            <div class="assignment-row-grid">
+              <div class="field">
+                <label>Designation</label>
+                {{ row.designation }}
+              </div>
+              <div class="field">
+                <label>Team</label>
+                {{ row.team }}
+              </div>
+              <div class="field assignment-row-delete">
+                <label style="display:flex; align-items:center; gap:6px; font-weight:500;">
+                  {{ row.DELETE }} Remove
+                </label>
+              </div>
+            </div>
+            {% for error in row.non_field_errors %}<div class="alert alert-error">{{ error }}</div>{% endfor %}
+          </div>
+        {% endfor %}
+      </div>
+      <button type="button" id="add-assignment-row-btn" class="link-btn">+ Add another designation</button>
     </div>
 
     {% if form.non_field_errors %}
@@ -66,4 +119,156 @@
     </div>
   </form>
 </div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+  /* --------------------------------
+     Add another designation
+  -------------------------------- */
+  var addBtn = document.getElementById("add-assignment-row-btn");
+
+  if (addBtn) {
+    var firstRow = document.querySelector("[data-assignment-row]");
+
+    addBtn.addEventListener("click", function () {
+      var totalFormsInput =
+        document.querySelector('[name="assignments-TOTAL_FORMS"]');
+
+      var idx = parseInt(totalFormsInput.value, 10);
+
+      if (!firstRow) return;
+
+      var container = document.createElement("div");
+      container.innerHTML = firstRow.outerHTML;
+
+      var newRow = container.firstElementChild;
+
+      newRow.querySelectorAll("select, input").forEach(function (el) {
+        if (!el.name) return;
+
+        if (el.name.endsWith("-id")) {
+          el.remove();
+          return;
+        }
+
+        el.name = el.name.replace(
+          /assignments-\d+-/,
+          "assignments-" + idx + "-"
+        );
+
+        if (el.id) {
+          el.id = el.id.replace(
+            /id_assignments-\d+-/,
+            "id_assignments-" + idx + "-"
+          );
+        }
+
+        if (el.type === "checkbox") {
+          el.checked = false;
+        } else {
+          el.value = "";
+        }
+      });
+
+      document
+        .getElementById("assignment-rows")
+        .appendChild(newRow);
+
+      totalFormsInput.value = idx + 1;
+    });
+  }
+
+
+  /* --------------------------------
+     Password Show / Hide
+  -------------------------------- */
+  var passwordToggle =
+    document.getElementById("edit-password-toggle");
+
+  var passwordInput =
+    document.getElementById("id_password");
+
+  if (passwordToggle && passwordInput) {
+
+    passwordToggle.addEventListener("click", function () {
+
+      if (passwordInput.type === "password") {
+
+        passwordInput.type = "text";
+
+        passwordToggle.textContent = "🙈";
+        passwordToggle.setAttribute(
+          "aria-label",
+          "Hide password"
+        );
+
+      } else {
+
+        passwordInput.type = "password";
+
+        passwordToggle.textContent = "👁";
+        passwordToggle.setAttribute(
+          "aria-label",
+          "Show password"
+        );
+      }
+
+    });
+
+  }
+
+});
+</script>
+
+<style>
+  .assignment-row {
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 14px;
+    margin-bottom: 12px;
+  }
+  .assignment-row-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 12px;
+    align-items: end;
+  }
+  @media (max-width: 720px) {
+    .assignment-row-grid { grid-template-columns: 1fr 1fr; }
+  }
+
+  .password-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-field input {
+  width: 100%;
+  padding-right: 45px;
+}
+
+.password-toggle-btn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 34px;
+  height: 34px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+}
+
+.password-toggle-btn:hover {
+  opacity: 0.75;
+}
+</style>
 {% endblock %}

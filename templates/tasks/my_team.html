@@ -11,6 +11,24 @@
       <label for="q">Search</label>
       <input type="text" id="q" name="q" value="{{ query }}" placeholder="Name or Employee ID">
     </div>
+    <div class="field filter-field">
+      <label>Role</label>
+      <select name="role">
+        <option value="">All roles</option>
+        {% for value, label in role_choices %}
+          <option value="{{ value }}" {% if value == role_filter %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field filter-field">
+      <label>Designation</label>
+      <select name="designation">
+        <option value="">All designations</option>
+        {% for value, label in designation_choices %}
+          <option value="{{ value }}" {% if value == designation_filter %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
     <button type="submit" class="btn btn-primary">Search</button>
     <a href="{% url 'my_team' %}" class="btn btn-ghost">Reset</a>
   </form>
@@ -32,8 +50,7 @@
         <div>
           <div class="person-name">{{ member.get_full_name|default:member.username }} &middot; <span class="emp-code">{{ member.employee_code }}</span></div>
           <div class="person-role">
-            {{ member.get_role_display }}{% if member.designation %} &mdash; {{ member.get_designation_display }}{% endif %}
-            &mdash; {{ member.team.name|default:"No team" }}
+            {{ member.get_role_display }} &mdash; {{ member.assignment_summary }}
           </div>
         </div>
       </div>

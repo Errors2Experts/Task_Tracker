@@ -302,7 +302,30 @@ a:hover { text-decoration: underline; }
   padding: 1px 7px;
   margin-left: auto;
 }
-.app-shell.is-collapsed .nav-badge { display: none; }
+
+/* Notification badge in collapsed sidebar */
+.app-shell.is-collapsed .nav-item {
+    position: relative;
+}
+
+.app-shell.is-collapsed .nav-item .nav-badge {
+    display: flex;
+    position: absolute;
+    top: 2px;
+    right: 4px;
+
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+
+    align-items: center;
+    justify-content: center;
+
+    font-size: 9px;
+    line-height: 1;
+    border-radius: 999px;
+    margin: 0;
+}
 
 .sidebar-foot {
   margin-top: 12px;
@@ -317,6 +340,22 @@ a:hover { text-decoration: underline; }
   align-items: center;
   gap: 8px;
 }
+.sidebar-foot {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.sidebar-foot .signed-label {
+    white-space: nowrap;
+}
+
+.sidebar-foot strong {
+    max-width: 200px;
+    overflow-wrap: break-word;
+}
+
 .app-shell.is-collapsed .sidebar-foot { opacity: 0; height: 0; padding: 0; border: 0; margin: 0; }
 
 .logout-btn {
@@ -1494,4 +1533,91 @@ select:disabled {
   .filter-field { min-width: 0; }
 
   .stat-grid, .dashboard-split { grid-template-columns: 1fr; }
+}
+
+/* =========================================================
+   COLLAPSED SIDEBAR - KEEP COLLAPSE BUTTON VISIBLE
+   ========================================================= */
+
+.sidebar-brand {
+    position: relative;
+}
+
+/* Collapsed sidebar */
+.app-shell.is-collapsed .sidebar-brand {
+    justify-content: center;
+    padding: 4px 0;
+    width: 100%;
+}
+
+/* Keep logo centered */
+.app-shell.is-collapsed .brand-logo {
+    flex-shrink: 0;
+}
+
+/* Keep collapse button visible */
+.app-shell.is-collapsed .sidebar-collapse-btn {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+
+    width: 26px;
+    height: 26px;
+
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+
+    z-index: 100;
+}
+
+/* Arrow rotation */
+.app-shell.is-collapsed .sidebar-collapse-btn svg {
+    transform: rotate(180deg);
+}
+
+/* Collapsed sidebar */
+.app-shell.is-collapsed .sidebar-brand {
+    position: relative;
+    justify-content: center;
+    padding: 4px 0;
+}
+
+/* Keep expand button clearly visible */
+.app-shell.is-collapsed .sidebar-collapse-btn {
+    position: absolute;
+    right: 2px;
+    top: 50%;
+    transform: translateY(-50%);
+
+    width: 26px;
+    height: 26px;
+
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+
+    z-index: 100;
+}
+
+/* Logo stays visible */
+.app-shell.is-collapsed .brand-logo {
+    cursor: pointer;
+    z-index: 1;
+}
+
+.brand-logo {
+    cursor: pointer;
+}
+
+/* Prevent sidebar expand animation during page load */
+html.sidebar-collapsed-preload .sidebar {
+    width: var(--sidebar-w-collapsed) !important;
+    transition: none !important;
+}
+
+html.sidebar-collapsed-preload .main-col {
+    margin-left: var(--sidebar-w-collapsed) !important;
+    transition: none !important;
 }

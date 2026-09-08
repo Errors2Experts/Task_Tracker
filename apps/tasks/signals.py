@@ -9,6 +9,7 @@ import json
 import logging
 
 from django.conf import settings
+from django.db.models import Q
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.urls import reverse
@@ -55,6 +56,10 @@ def _department_leads_for(task):
     have full read/assign visibility over their entire department (see
     accounts/permissions.py), so — just like Admin and Manager — they should
     hear about every task in it, not only the ones they personally assigned.
+
+    Matches the designation held as EITHER a user's primary designation OR
+    one of their (possibly several) EmployeeAssignment rows, so holding the
+    lead designation only as a secondary assignment still counts.
     """
     if not task.team_id:
         return User.objects.none()
@@ -66,7 +71,10 @@ def _department_leads_for(task):
     if not designations:
         return User.objects.none()
 
-    return User.objects.filter(designation__in=designations, is_active=True)
+    return User.objects.filter(
+        Q(designation__in=designations) | Q(assignments__designation__in=designations),
+        is_active=True,
+    ).distinct()
 
 
 def _recipients_for(activity):
@@ -109,7 +117,10 @@ def _recipients_for(activity):
 
     recipients.update(User.objects.filter(is_superuser=True))
     recipients.update(
-        User.objects.filter(designation="MANAGER", is_active=True)
+        User.objects.filter(
+            Q(designation="MANAGER") | Q(assignments__designation="MANAGER"),
+            is_active=True,
+        ).distinct()
     )
     recipients.update(_department_leads_for(task))
     recipients.discard(activity.actor)

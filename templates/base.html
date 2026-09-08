@@ -9,6 +9,19 @@
         integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
 <link rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+<script>
+(function () {
+    try {
+        if (localStorage.getItem("tt-sidebar-collapsed") === "1") {
+            document.documentElement.classList.add("sidebar-collapsed-preload");
+        }
+    } catch (e) {
+        // Ignore localStorage errors
+    }
+})();
+</script>
+
 <link rel="stylesheet" href="{% static 'css/main.css' %}">
 {% block extra_head %}{% endblock %}
 
@@ -21,12 +34,9 @@
 
   <nav class="sidebar" data-sidebar>
     <div class="sidebar-brand">
-      <!-- <div class="brand-logo">T</div> -->
       <img src="{% static 'image/logo.jpeg' %}" alt="photo" class="brand-logo">
-      <div class="brand-name">Task Tracker<span>E2E Solutions</span></div>
-      <!-- <button type="button" class="sidebar-collapse-btn" data-sidebar-collapse-toggle aria-label="Collapse sidebar">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-      </button> -->
+      <div class="brand-name">Task Tracker<span>IT Services and IT Training</span></div>
+      
     </div>
     <div class="sidebar-nav">
       <div class="nav-eyebrow">Menu</div>
@@ -70,7 +80,7 @@
         <!-- {# My Team: Admin/Manager see all Reporting persons; Technical/Testing/
              Digital Marketing Lead see their department; Team Lead (Developer)
              sees their own team. Nobody else (HR, employee-tier) gets this link. #} -->
-        {% if request.user.is_superuser or request.user.designation == "MANAGER" or request.user.designation == "TECHNICAL_LEAD" or request.user.designation == "TESTING_LEAD" or request.user.designation == "DIGITAL_MARKETING_LEAD" or request.user.designation == "TEAM_LEAD" %}
+        {% if request.user.is_superuser or request.user.designation == "MANAGER" or request.user.designation == "TECHNICAL_LEAD" or request.user.designation == "TESTING_LEAD" or request.user.designation == "DIGITAL_MARKETING_LEAD" or request.user.designation == "TEAM_LEAD" or request.user.designation == "UI_UX_LEAD" %}
           <a href="{% url 'my_team' %}" class="nav-item {% if 'my-team' in request.path %}active{% endif %}">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M12 3a4 4 0 1 1 0 8 4 4 0 0 1 0-8z"/></svg>
             <span class="nav-label">My Team</span>
@@ -91,7 +101,18 @@
        {% endif %}
       {% endif %}
     </div>
-    <div class="sidebar-foot">Signed in as <strong>{% if request.user.is_superuser %}Admin{% else %}{{ request.user.get_designation_display|default:request.user.get_role_display }}{% endif %}</strong></div>
+    <div class="sidebar-foot">
+    <span>Signed in as</span>
+    <strong>
+        {% if request.user.is_superuser %}
+            Admin
+        {% elif request.user.designation %}
+            {{ request.user.designations_display }}
+        {% else %}
+            {{ request.user.get_role_display }}
+        {% endif %}
+    </strong>
+</div>
 
     <form method="post" action="{% url 'logout' %}">
     {% csrf_token %}
@@ -130,10 +151,12 @@
             <div class="meta">
                 {% if request.user.is_superuser %}
                     {% if request.user.designation %}
-                    <small>{{ request.user.get_designation_display }}</small>
+                    <small>{{ request.user.designations_display }}</small>
                     {% endif %}
+                {% elif request.user.designation %}
+                    {{ request.user.designations_display }}
                 {% else %}
-                    {{ request.user.get_designation_display|default:request.user.get_role_display }}
+                    {{ request.user.get_role_display }}
                 {% endif %}
             </div>
         </div>

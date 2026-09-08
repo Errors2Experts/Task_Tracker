@@ -7,8 +7,11 @@ from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 
-from .forms import RegisterForm, EmployeeRegistrationForm, EmployeeEditForm
-from .models import Role, Designation, Team
+from .forms import (
+    RegisterForm, EmployeeRegistrationForm, EmployeeEditForm, EmployeeAssignmentFormSet,
+    _DESIGNATION_REQUIRED_ROLES,
+)
+from .models import Role, Designation, Team, EmployeeAssignment
 from .forms import ProfileEditForm, ProfilePhotoForm
 from apps.tasks.models import Task, TaskStatus
 
@@ -51,6 +54,56 @@ def require_admin_or_manager(view_func):
         return view_func(request, *args, **kwargs)
     return wrapper
 
+def _formset_active_row_count(formset):
+    """How many rows in an EmployeeAssignmentFormSet actually carry a
+    designation (i.e. aren't blank/skipped and aren't marked for deletion)."""
+    count = 0
+    for row_form in formset:
+        if not row_form.cleaned_data or row_form.cleaned_data.get("_skip"):
+            continue
+        if row_form.cleaned_data.get("DELETE"):
+            continue
+        count += 1
+    return count
+
+
+def _save_employee_assignments(employee, formset):
+    """Persist an EmployeeAssignmentFormSet against `employee`, then sync the
+    legacy single `designation`/`team` fields on User from whichever row is
+    primary (or the first saved row, if none was explicitly marked) — that
+    keeps every existing piece of code that still reads `user.designation` /
+    `user.team` working exactly as before."""
+    saved_rows = []
+    for row_form in formset:
+        if not row_form.cleaned_data or row_form.cleaned_data.get("_skip"):
+            continue
+        if row_form.cleaned_data.get("DELETE"):
+            if row_form.instance.pk:
+                row_form.instance.delete()
+            continue
+        assignment = row_form.save(commit=False)
+        assignment.employee = employee
+        assignment.save()
+        saved_rows.append(assignment)
+
+    if not saved_rows:
+        return
+
+    primary = next((row for row in saved_rows if row.is_primary), saved_rows[0])
+    if not any(row.is_primary for row in saved_rows):
+        primary.is_primary = True
+        primary.save(update_fields=["is_primary"])
+    # Make sure exactly one row is flagged primary.
+    for row in saved_rows:
+        if row.pk != primary.pk and row.is_primary:
+            row.is_primary = False
+            row.save(update_fields=["is_primary"])
+
+    employee.designation = primary.designation
+    employee.team = primary.team
+    employee.save(update_fields=["designation", "team"])
+
+
 def _employee_queryset():
     """Employee Management never lists, shows, or edits Admin (superuser)
     accounts — mirrors the same exclusion used throughout
@@ -66,17 +119,26 @@ def employee_register(request):
 
     if request.method == "POST":
         form = EmployeeRegistrationForm(request.POST, request.FILES)
-        if form.is_valid():
-            employee = form.save()
-            messages.success(
-                request,
-                f"Employee registered with ID {employee.employee_code}.",
-            )
-            return redirect("employee_detail", pk=employee.pk)
+        formset = EmployeeAssignmentFormSet(
+            request.POST, prefix="assignments", queryset=EmployeeAssignment.objects.none(),
+        )
+        if form.is_valid() and formset.is_valid():
+            role = form.cleaned_data.get("role")
+            if role in _DESIGNATION_REQUIRED_ROLES and _formset_active_row_count(formset) == 0:
+                messages.error(request, "Add at least one designation for a Reporting person.")
+            else:
+                employee = form.save()
+                _save_employee_assignments(employee, formset)
+                messages.success(
+                    request,
+                    f"Employee registered with ID {employee.employee_code}.",
+                )
+                return redirect("employee_detail", pk=employee.pk)
     else:
         form = EmployeeRegistrationForm()
+        formset = EmployeeAssignmentFormSet(prefix="assignments", queryset=EmployeeAssignment.objects.none())
 
-    return render(request, "accounts/employee_register.html", {"form": form})
+    return render(request, "accounts/employee_register.html", {"form": form, "assignment_formset": formset})
 
 
 @login_required
@@ -102,11 +164,15 @@ def employee_list(request):
 
     designation_filter = request.GET.get("designation", "")
     if designation_filter in Designation.values:
-        employees = employees.filter(designation=designation_filter)
+        employees = employees.filter(
+            Q(designation=designation_filter) | Q(assignments__designation=designation_filter)
+        ).distinct()
 
     team_filter = request.GET.get("team", "")
     if team_filter.isdigit():
-        employees = employees.filter(team_id=team_filter)
+        employees = employees.filter(
+            Q(team_id=team_filter) | Q(assignments__team_id=team_filter)
+        ).distinct()
 
     status_filter = request.GET.get("status", "")
     if status_filter == "active":
@@ -152,24 +218,38 @@ def employee_edit(request, pk):
     employee = get_object_or_404(_employee_queryset(), pk=pk)
 
     if request.method == "POST":
-        form = EmployeeEditForm(request.POST,request.FILES, instance=employee)
-        if form.is_valid():
-            form.save()
-            messages.success(
-                request,
-                f"{employee.get_full_name() or employee.employee_code}'s details were updated.",
-            )
-            return redirect("employee_detail", pk=employee.pk)
+        form = EmployeeEditForm(request.POST, request.FILES, instance=employee)
+        formset = EmployeeAssignmentFormSet(
+            request.POST, prefix="assignments",
+            queryset=EmployeeAssignment.objects.filter(employee=employee),
+        )
+        if form.is_valid() and formset.is_valid():
+            role = form.cleaned_data.get("role")
+            if role in _DESIGNATION_REQUIRED_ROLES and _formset_active_row_count(formset) == 0:
+                messages.error(request, "Add at least one designation for a Reporting person.")
+            else:
+                form.save()
+                _save_employee_assignments(employee, formset)
+                messages.success(
+                    request,
+                    f"{employee.get_full_name() or employee.employee_code}'s details were updated.",
+                )
+                return redirect("employee_detail", pk=employee.pk)
     else:
         form = EmployeeEditForm(instance=employee)
+        formset = EmployeeAssignmentFormSet(
+            prefix="assignments", queryset=EmployeeAssignment.objects.filter(employee=employee),
+        )
 
-    return render(request, "accounts/employee_edit.html", {"form": form, "employee": employee})
+    return render(request, "accounts/employee_edit.html", {
+        "form": form, "employee": employee, "assignment_formset": formset,
+    })
 
 
 def _task_counts_for(user):
     tasks = Task.objects.filter(assigned_to=user)
     completed = tasks.filter(status=TaskStatus.COMPLETED).count()
-    active = tasks.exclude(status__in=[TaskStatus.COMPLETED, TaskStatus.CANCELLED]).count()
+    active = tasks.exclude(status__in=[TaskStatus.COMPLETED, TaskStatus.BLOCKED]).count()
     return completed, active
 
 

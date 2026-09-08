@@ -1,6 +1,12 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import User, Team
+from .models import User, Team, EmployeeAssignment
+
+
+class EmployeeAssignmentInline(admin.TabularInline):
+    model = EmployeeAssignment
+    fk_name = "employee"
+    extra = 0
 
 
 @admin.action(description="Approve selected users (allow them to sign in)")
@@ -19,10 +25,11 @@ class CustomUserAdmin(UserAdmin):
     promote anyone — including themselves — to Admin.
     """
     actions = [approve_users]
+    inlines = [EmployeeAssignmentInline]
     fieldsets = UserAdmin.fieldsets + (
-        ("Role Info", {"fields": ("role", "designation", "team")}),
+        ("Role Info", {"fields": ("role", "designation", "team", "reporting_person")}),
     )
-    list_display = ("username", "email", "role", "designation", "team", "is_active", "is_superuser")
+    list_display = ("username", "email", "role", "designation", "team", "reporting_person", "is_active", "is_superuser")
     list_filter = ("role", "designation", "team", "is_active", "is_superuser")
 
     SUPERUSER_ONLY_FIELDS = ("is_superuser", "user_permissions")
@@ -55,3 +62,4 @@ class CustomUserAdmin(UserAdmin):
 
 admin.site.register(User, CustomUserAdmin)
 admin.site.register(Team)
+admin.site.register(EmployeeAssignment)

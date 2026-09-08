@@ -21,12 +21,14 @@ already enforced on the Task itself:
                                                    change priority, due date,
                                                    or reassign
 """
-from apps.accounts.models import Designation, Role
+from apps.accounts.models import Role
 from apps.accounts.permissions import (
-    DESIGNATION_DEPARTMENT_MAP,
+    _user_authority_scope,
     get_visible_tasks_queryset,
     has_full_access,
     is_employee_tier,
+    is_hr,
+    is_manager,
 )
 from .models import TaskStatus
 
@@ -41,20 +43,29 @@ def can_view_task(user, task):
 def can_edit_task_fields(user, task):
     """Full field edits: priority, due date, description, reassignment.
     Deliberately excludes HR (view-only) and the Employee/Intern tier
-    (who only ever touch status, progress, comments, attachments)."""
+    (who only ever touch status, progress, comments, attachments).
+
+    Checks across ALL of a Reporting person's designation assignments, not
+    just their primary one — so a dept/team lead scope held as a secondary
+    designation still grants edit rights within that scope. Also allows it
+    whenever the task's assignee explicitly reports to this user
+    (reporting_person), regardless of department/team — same exception as
+    accounts.permissions.can_assign_to()/get_assignable_employees()."""
     if user.is_superuser:
         return True
 
     if user.role == Role.REPORTING_PERSON:
-        if user.designation == Designation.HR:
+        if is_hr(user):
             return False
-        if user.designation == Designation.MANAGER:
+        if is_manager(user):
             return True
-        department = DESIGNATION_DEPARTMENT_MAP.get(user.designation)
-        if department:
-            return bool(task.team) and task.team.department == department
-        if user.designation == Designation.TEAM_LEAD_DEVELOPER:
-            return task.team_id == user.team_id and user.team_id is not None
+        if task.assigned_to_id and task.assigned_to.reporting_person_id == user.id:
+            return True
+        departments, team_ids = _user_authority_scope(user)
+        if departments and bool(task.team) and task.team.department in departments:
+            return True
+        if team_ids and task.team_id in team_ids:
+            return True
 
     return False
 
@@ -85,9 +96,7 @@ def can_comment_or_attach(user, task):
         return False
 
     # Employees/Interns and HR: own tasks only
-    if is_employee_tier(user) or (
-        user.role == Role.REPORTING_PERSON and user.designation == Designation.HR
-    ):
+    if is_employee_tier(user) or is_hr(user):
         return task.assigned_to_id == user.id
 
     return can_edit_task_fields(user, task)

@@ -22,6 +22,27 @@
 
     {{ formset.management_form }}
 
+    {% if assignment_rows|length > 1 %}
+    <div class="atf-block">
+      <div class="atf-block-label">Assign under</div>
+      <div class="form-grid">
+        <div class="field">
+          <label for="assignmentSelect">Designation / Department / Team</label>
+          <select id="assignmentSelect" name="assignment" required>
+            {% for row in assignment_rows %}
+              <option value="{{ row.id }}" {% if row.is_primary %}selected{% endif %}>
+                {{ row.get_designation_display }}{% if row.department %} &middot; {{ row.get_department_display }}{% endif %}{% if row.team %} &middot; {{ row.team.name }}{% endif %}
+              </option>
+            {% endfor %}
+          </select>
+          <small style="color: var(--text-400);">This employee holds more than one designation — pick which one this task falls under.</small>
+        </div>
+      </div>
+    </div>
+    {% elif assignment_rows %}
+      <input type="hidden" name="assignment" value="{{ assignment_rows.0.id }}">
+    {% endif %}
+
     <div class="atf-block">
       <div class="atf-block-label">Task details</div>
       <div id="task-rows">
@@ -102,7 +123,9 @@
 
     <div class="form-actions">
       <a href="{% url 'task_assign_list' %}" class="btn btn-ghost">Cancel</a>
-      <button type="submit" class="btn btn-primary">Assign task</button>
+      <button type="submit" id="assignTaskBtn" class="btn btn-primary">
+        Assign task
+      </button>
     </div>
   </form>
 </div>
@@ -154,37 +177,142 @@
 </template>
 
 <script>
-document.getElementById('add-row-btn').addEventListener('click', function () {
-  var totalFormsInput = document.querySelector('[name="tasks-TOTAL_FORMS"]');
-  var idx = parseInt(totalFormsInput.value, 10);
-  var template = document.getElementById('empty-row-template').innerHTML.split('__prefix__').join(idx);
-  document.getElementById('task-rows').insertAdjacentHTML('beforeend', template);
-  totalFormsInput.value = idx + 1;
+document.addEventListener('DOMContentLoaded', function () {
+
+    const form = document.getElementById('assignTaskForm');
+    const addRowBtn = document.getElementById('add-row-btn');
+    const taskRows = document.getElementById('task-rows');
+    const totalFormsInput = document.querySelector('[name="tasks-TOTAL_FORMS"]');
+    const assignTaskBtn = document.getElementById('assignTaskBtn');
+
+    // -------------------------------
+    // Set minimum date as today
+    // -------------------------------
+    function setMinDate(input) {
+        if (!input) return;
+
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+
+        input.min = `${year}-${month}-${day}`;
+    }
+
+    // Existing date fields
+    document.querySelectorAll('#task-rows input[type="date"]').forEach(function (input) {
+        setMinDate(input);
+    });
+
+
+    // -------------------------------
+    // Add another task
+    // -------------------------------
+    addRowBtn.addEventListener('click', function () {
+
+        const idx = parseInt(totalFormsInput.value, 10);
+
+        let template = document.getElementById('empty-row-template').innerHTML;
+        template = template.replace(/__prefix__/g, idx);
+
+        taskRows.insertAdjacentHTML('beforeend', template);
+
+        totalFormsInput.value = idx + 1;
+
+        // Set today's date as minimum
+        const newDueDate = document.querySelector(
+            `input[name="tasks-${idx}-due_date"]`
+        );
+
+        setMinDate(newDueDate);
+
+        // CKEditor for new task
+        const newTextarea = document.getElementById(
+            'id_tasks-' + idx + '-task_description'
+        );
+
+        if (newTextarea && window.ClassicEditor) {
+            ClassicEditor.create(newTextarea, {
+                toolbar: [
+                    'heading', '|',
+                    'bold', 'italic', 'underline', 'strikethrough',
+                    'link',
+                    'bulletedList', 'numberedList', 'todoList', '|',
+                    'outdent', 'indent', '|',
+                    'fontSize', 'fontColor',
+                    'fontBackgroundColor', '|',
+                    'insertTable', 'blockQuote',
+                    'codeBlock', 'imageUpload', '|',
+                    'undo', 'redo'
+                ]
+            }).catch(function (err) {
+                console.error(err);
+            });
+        }
+    });
+
+
+    // -------------------------------
+    // Form submit validation
+    // -------------------------------
+    form.addEventListener('submit', function (event) {
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        let invalidDate = false;
+
+        document.querySelectorAll(
+            '#task-rows input[type="date"]'
+        ).forEach(function (input) {
+
+            if (!input.value) return;
+
+            const selectedDate = new Date(input.value + 'T00:00:00');
+
+            if (selectedDate < today) {
+                invalidDate = true;
+
+                input.setCustomValidity(
+                    'Due date cannot be a past date.'
+                );
+
+                input.reportValidity();
+            } else {
+                input.setCustomValidity('');
+            }
+        });
+
+        // Stop submit if past date exists
+        if (invalidDate) {
+            event.preventDefault();
+            return;
+        }
+
+        // Prevent double click / duplicate submission
+        if (assignTaskBtn.disabled) {
+            event.preventDefault();
+            return;
+        }
+
+        assignTaskBtn.disabled = true;
+        assignTaskBtn.textContent = 'Assigning...';
+        assignTaskBtn.style.opacity = '0.7';
+        assignTaskBtn.style.cursor = 'not-allowed';
+    });
+
+
+    // Clear date validation message
+    document.addEventListener('change', function (event) {
+
+        if (event.target.matches('#task-rows input[type="date"]')) {
+            event.target.setCustomValidity('');
+        }
+
+    });
+
 });
 </script>
-
-<script>
-document.getElementById('add-row-btn').addEventListener('click', function () {
-  var totalFormsInput = document.querySelector('[name="tasks-TOTAL_FORMS"]');
-  var idx = parseInt(totalFormsInput.value, 10);
-  var template = document.getElementById('empty-row-template').innerHTML.split('__prefix__').join(idx);
-  document.getElementById('task-rows').insertAdjacentHTML('beforeend', template);
-  totalFormsInput.value = idx + 1;
-
-  // Attach CKEditor 5 to the newly added row's description textarea.
-  var newTextarea = document.getElementById('id_tasks-' + idx + '-task_description');
-  if (newTextarea && window.ClassicEditor) {
-    ClassicEditor.create(newTextarea, {
-      toolbar: ['heading', '|', 'bold', 'italic', 'underline', 'strikethrough',
-                'link', 'bulletedList', 'numberedList', 'todoList', '|',
-                'outdent', 'indent', '|', 'fontSize', 'fontColor',
-                'fontBackgroundColor', '|', 'insertTable', 'blockQuote',
-                'codeBlock', 'imageUpload', '|', 'undo', 'redo']
-    }).catch(function (err) { console.error(err); });
-  }
-});
-</script>
-
 
 <style>
   .atf-card { max-width: 760px; }

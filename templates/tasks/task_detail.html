@@ -26,6 +26,7 @@
         <span class="pill status-pill status-pill-blocked">Team Lead Rejected</span>
       {% endif %}
       <span>Team: {{ task.team.name|default:"No team" }}</span>
+      {% if task.department %}<span>Department: {{ task.get_department_display }}</span>{% endif %}
       {% if task.due_date %}<span>Due {{ task.due_date|date:"d M Y" }}{% if task.due_time %}, {{ task.due_time|time:"g:i A" }}{% endif %}</span>{% endif %}
     </div>
     <div class="task-detail-meta">

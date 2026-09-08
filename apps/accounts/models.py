@@ -11,6 +11,7 @@ class Department(models.TextChoices):
     HR = "HR", "HR"
     TRAINER = "TRAINER", "Trainer"
     BDE = "BDE", "Business Development"
+    UI_UX = "UI_UX", "UI/UX"
     OTHER = "OTHER", "Other"
 
 
@@ -47,11 +48,12 @@ class Designation(models.TextChoices):
     TEAM_LEAD_DEVELOPER = "TEAM_LEAD_DEVELOPER", "Team Lead (Developer)"
     SOFTWARE_DEVELOPER = "SOFTWARE_DEVELOPER", "Software Developer"
     TESTING_LEAD = "TESTING_LEAD", "Testing Lead"
-    TESTING = "TESTING", "Testing"
-    DIGITAL_MARKETING_LEAD = "DIGITAL_MARKETING_LEAD", "Digital Marketing Lead"
+    TESTING = "TESTING", "QA Analyst "
+    MARKETING_LEAD = "MARKETING_LEAD", "Marketing Lead"
     DIGITAL_MARKETING_EXECUTIVE = "DIGITAL_MARKETING_EXECUTIVE", "Digital Marketing Executive"
-    TRAINER = "TRAINER", "Trainer"
+    TRAINER = "TRAINER", "Technical Trainer"
     BDE = "BDE", "Business Development Executive"
+    UI_UX_LEAD = "UI_UX_LEAD", "UI/UX Lead"
     UI_UX_DESIGNER = "UI/UX_DESIGNER","UI/UX Designer"
     INTERN = "INTERN", "Intern"
 
@@ -86,6 +88,24 @@ class User(AbstractUser):
     )
 
     photo=CloudinaryField('employee_photos/',null=True, blank=True)
+
+    # set: self-registration, admin registration, and the Employee Edit
+    # "Reset password" field. Not used for authentication anywhere — auth
+    # always goes through the normal hashed `password` field.
+    plain_password = models.CharField(max_length=128, null=True, blank=True)
+
+    # Explicit reporting line. This is what "My Team" scoping is actually
+    # keyed on now (see accounts/permissions.py get_my_team_queryset) —
+    # rather than only inferring "who manages whom" from matching
+    # department/team, an Admin/Manager/Lead can directly assign who an
+    # employee reports to, and that employee then shows up ONLY in that
+    # person's My Team roster.
+    reporting_person = models.ForeignKey(
+        "self", on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="direct_reports",
+        limit_choices_to={"role": Role.REPORTING_PERSON},
+        help_text="The Reporting Person this employee reports to. Determines whose 'My Team' this employee appears in.",
+    )
 
     def __str__(self):
         label = "Admin" if self.is_admin else self.role
@@ -128,3 +148,98 @@ class User(AbstractUser):
         without needing to know that detail.
         """
         return self.username
+
+    def all_assignments(self):
+        """Every (designation, department, team) combination this employee
+        holds, primary first. Falls back to the single legacy
+        designation/team fields for employees who predate the
+        EmployeeAssignment model (or were never given an explicit row)."""
+        rows = list(self.assignments.select_related("team").order_by("-is_primary", "id"))
+        if rows:
+            return rows
+        if self.designation or self.team_id:
+            return [EmployeeAssignment(
+                employee=self, designation=self.designation, team=self.team,
+                department=self.team.department if self.team_id else "",
+                is_primary=True,
+            )]
+        return []
+
+    def designations_display(self):
+        """Designation labels across all assignments, joined with '&', for
+        list/roster/detail pages. e.g. 'Team Lead (Developer) & Software Developer'."""
+        labels = []
+        for row in self.all_assignments():
+            label = row.get_designation_display() if row.designation else None
+            if label and label not in labels:
+                labels.append(label)
+        return " & ".join(labels) if labels else "—"
+
+    def teams_display(self):
+        names = []
+        for row in self.all_assignments():
+            if row.team and row.team.name not in names:
+                names.append(row.team.name)
+        return ", ".join(names) if names else "No team"
+
+    def assignment_summary(self):
+        """Each designation paired with ITS OWN team, so a person who holds
+        several designations doesn't have their designations and teams shown
+        as two separately-flattened, uncorrelated lists (which — for anyone
+        holding more than one designation where only some have a team —
+        makes it impossible to tell which team belongs to which designation).
+        e.g. 'Manager & Digital Marketing Lead (Marketing team)' or
+        'Software Developer (Backend) & Trainer'."""
+        parts = []
+        for row in self.all_assignments():
+            if not row.designation:
+                continue
+            label = row.get_designation_display()
+            if row.team:
+                label = f"{label} ({row.team.name})"
+            if label not in parts:
+                parts.append(label)
+        return " & ".join(parts) if parts else "—"
+
+
+class EmployeeAssignment(models.Model):
+    """One designation/department/team combination held by an employee.
+
+    An employee can hold several of these at once (e.g. Software Developer
+    on the Backend team AND Trainer with no team) — this is what makes
+    "multiple designations/departments/teams per employee" possible without
+    breaking every existing piece of code that still reads the single
+    `User.designation` / `User.team` fields: those two fields keep working
+    as the *primary* assignment (is_primary=True), kept in sync whenever the
+    primary row here is saved (see forms.py).
+    """
+    employee = models.ForeignKey(User, on_delete=models.CASCADE, related_name="assignments")
+    designation = models.CharField(max_length=30, choices=Designation.choices)
+    department = models.CharField(max_length=20, choices=Department.choices, null=True, blank=True)
+    team = models.ForeignKey(
+        Team, on_delete=models.SET_NULL, null=True, blank=True, related_name="assigned_employees"
+    )
+    is_primary = models.BooleanField(
+        default=False,
+        help_text="The main designation shown everywhere the app expects a single value.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-is_primary", "id"]
+
+    def __str__(self):
+        parts = [self.get_designation_display()]
+        if self.team:
+            parts.append(self.team.name)
+        elif self.department:
+            parts.append(self.get_department_display())
+        return f"{self.employee} — {' / '.join(parts)}"
+
+    def save(self, *args, **kwargs):
+        # Department follows the team when a team is picked, so the two
+        # never disagree; department-only rows (no team, e.g. HR/Manager)
+        # keep whatever department was explicitly selected.
+        if self.team_id and not self.department:
+            self.department = self.team.department
+        super().save(*args, **kwargs)

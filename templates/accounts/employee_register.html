@@ -35,20 +35,52 @@
         {{ form.role }}
       </div>
       <div class="field">
-        <label>{{ form.designation.label }}</label>
-        {{ form.designation }}
-        {% for error in form.designation.errors %}<div class="alert alert-error">{{ error }}</div>{% endfor %}
+        <label>{{ form.reporting_person.label }}</label>
+        {{ form.reporting_person }}
+        <small style="color: var(--text-400);">{{ form.reporting_person.help_text }}</small>
       </div>
     </div>
 
     <div class="field">
-      <label>{{ form.team.label }}</label>
-      {{ form.team }}
-    </div>
-    <div class="field">
       <label>{{ form.photo.label }}</label>
       {{ form.photo }}
       {% for error in form.photo.errors %}<div class="alert alert-error">{{ error }}</div>{% endfor %}
+    </div>
+
+    <div class="field">
+      <label style="font-weight:700; text-transform:uppercase; font-size:11px; letter-spacing:.06em; color:var(--accent-600); border-bottom:1px solid var(--border); padding-bottom:8px; display:block;">
+        Designations &amp; Teams
+      </label>
+      <p style="color: var(--text-400); font-size: 12.5px; margin: 4px 0 10px;">
+        An employee can hold more than one designation — click "Add another designation" for each extra one.
+      </p>
+      {{ assignment_formset.management_form }}
+      <div id="assignment-rows">
+        {% for row in assignment_formset %}
+          <div class="assignment-row" data-assignment-row>
+            {% for hidden in row.hidden_fields %}{{ hidden }}{% endfor %}
+            <div class="assignment-row-grid">
+              <div class="field">
+                <label>Designation</label>
+                {{ row.designation }}
+              </div>
+              <div class="field">
+                <label>Team</label>
+                {{ row.team }}
+              </div>
+              {% if row.DELETE %}
+                <div class="field assignment-row-delete">
+                  <label style="display:flex; align-items:center; gap:6px; font-weight:500;">
+                    {{ row.DELETE }} Remove
+                  </label>
+                </div>
+              {% endif %}
+            </div>
+            {% for error in row.non_field_errors %}<div class="alert alert-error">{{ error }}</div>{% endfor %}
+          </div>
+        {% endfor %}
+      </div>
+      <button type="button" id="add-assignment-row-btn" class="link-btn">+ Add another designation</button>
     </div>
 
     <div class="form-grid">
@@ -81,4 +113,84 @@
     </div>
   </form>
 </div>
+
+<template id="empty-assignment-row-template">
+  <div class="assignment-row" data-assignment-row>
+    <div class="assignment-row-grid">
+      <div class="field">
+        <label>Designation</label>
+        <select name="assignments-__prefix__-designation">
+          <option value="">Select Designation</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Team</label>
+        <select name="assignments-__prefix__-team">
+          <option value="">No team</option>
+        </select>
+      </div>
+    </div>
+  </div>
+</template>
+
+
+<script>
+(function () {
+  var addBtn = document.getElementById('add-assignment-row-btn');
+  if (!addBtn) return;
+
+  // Clone the option lists straight from the first rendered row, so the new
+  // row's <select>s always match whatever choices the server actually sent
+  // down (no need to hand-maintain a duplicate list in JS).
+  var firstRow = document.querySelector('[data-assignment-row]');
+
+  addBtn.addEventListener('click', function () {
+    var totalFormsInput = document.querySelector('[name="assignments-TOTAL_FORMS"]');
+    var idx = parseInt(totalFormsInput.value, 10);
+
+    var template = document.getElementById('empty-assignment-row-template').content
+      ? document.getElementById('empty-assignment-row-template').content.cloneNode(true)
+      : null;
+
+    var container = document.createElement('div');
+    if (firstRow) {
+      container.innerHTML = firstRow.outerHTML;
+    } else {
+      container.appendChild(template);
+    }
+    var newRow = container.firstElementChild;
+
+    // Re-point every field's name/id to the new index and clear its value.
+    newRow.querySelectorAll('select, input').forEach(function (el) {
+      if (!el.name) return;
+      el.name = el.name.replace(/assignments-\d+-/, 'assignments-' + idx + '-');
+      if (el.id) el.id = el.id.replace(/id_assignments-\d+-/, 'id_assignments-' + idx + '-');
+      if (el.type === 'checkbox') { el.checked = false; }
+      else { el.value = ''; }
+    });
+
+    document.getElementById('assignment-rows').appendChild(newRow);
+    totalFormsInput.value = idx + 1;
+  });
+})();
+</script>
+
+<style>
+  .assignment-row {
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 14px;
+    margin-bottom: 12px;
+  }
+  .assignment-row-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 12px;
+    align-items: end;
+  }
+  @media (max-width: 720px) {
+    .assignment-row-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
 {% endblock %}

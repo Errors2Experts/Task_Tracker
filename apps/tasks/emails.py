@@ -24,6 +24,7 @@ import logging
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.mail import EmailMessage
+from django.db.models import Q
 from django.urls import reverse
 from django.utils.html import strip_tags
 
@@ -33,12 +34,24 @@ from apps.accounts.permissions import DESIGNATION_DEPARTMENT_MAP
 logger = logging.getLogger(__name__)
 
 
+def _with_designation(designation):
+    """Users who hold `designation` as EITHER their primary designation OR
+    one of their (possibly several) EmployeeAssignment rows — so someone
+    holding a role only as a secondary designation still gets the same
+    emails as anyone who holds it as their primary one."""
+    User = get_user_model()
+    return User.objects.filter(
+        Q(designation=designation) | Q(assignments__designation=designation),
+        is_active=True,
+    ).distinct()
+
+
 def _admin_manager_hr():
     """Admin (superuser), Manager, HR — the standing CC list on every task email."""
     User = get_user_model()
     users = set(User.objects.filter(is_superuser=True, is_active=True))
-    users.update(User.objects.filter(designation=Designation.MANAGER, is_active=True))
-    users.update(User.objects.filter(designation=Designation.HR, is_active=True))
+    users.update(_with_designation(Designation.MANAGER))
+    users.update(_with_designation(Designation.HR))
     return users
 
 
@@ -51,14 +64,16 @@ def _team_and_dept_leads(task):
 
     User = get_user_model()
     leads = set(User.objects.filter(
-        designation=Designation.TEAM_LEAD_DEVELOPER, team_id=task.team_id, is_active=True,
-    ))
+        Q(designation=Designation.TEAM_LEAD_DEVELOPER, team_id=task.team_id)
+        | Q(assignments__designation=Designation.TEAM_LEAD_DEVELOPER, assignments__team_id=task.team_id),
+        is_active=True,
+    ).distinct())
     dept_designations = [
         designation for designation, department in DESIGNATION_DEPARTMENT_MAP.items()
         if department == task.team.department
     ]
-    if dept_designations:
-        leads.update(User.objects.filter(designation__in=dept_designations, is_active=True))
+    for designation in dept_designations:
+        leads.update(_with_designation(designation))
     return leads
 
 

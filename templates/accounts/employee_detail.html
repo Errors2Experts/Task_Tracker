@@ -27,20 +27,19 @@
       <input type="text" value="{{ employee.get_role_display }}" readonly>
     </div>
     <div class="field">
-      <label>Designation</label>
-      <input type="text" value="{{ employee.get_designation_display|default:"—" }}" readonly>
-    </div>
-  </div>
-
-  <div class="form-grid">
-    <div class="field">
-      <label>Team</label>
-      <input type="text" value="{{ employee.team.name|default:"No team" }}" readonly>
-    </div>
-    <div class="field">
       <label>Status</label>
       <input type="text" value="{% if employee.is_active %}Active{% else %}Inactive{% endif %}" readonly>
     </div>
+  </div>
+
+  <div class="field">
+    <label>Designation{{ employee.all_assignments|length|pluralize }} &amp; team{{ employee.all_assignments|length|pluralize }}</label>
+    <input type="text" value="{{ employee.assignment_summary }}" readonly>
+  </div>
+
+  <div class="field">
+    <label>Reporting Person</label>
+    <input type="text" value="{% if employee.reporting_person %}{{ employee.reporting_person.get_full_name|default:employee.reporting_person.username }}{% else %}—{% endif %}" readonly>
   </div>
 
   <div class="form-actions">

@@ -20,7 +20,7 @@
         {% endif %}
         <div>
           <div class="person-name">{{ emp.get_full_name|default:emp.username }} &middot; <span class="emp-code">{{ emp.employee_code }}</span></div>
-          <div class="person-role">{{ emp.get_role_display }} &mdash; {{ emp.team.name|default:"No team" }}</div>
+          <div class="person-role">{{ emp.get_role_display }} &mdash; {{ emp.assignment_summary }}</div>
         </div>
       </div>
       <div class="roster-actions">

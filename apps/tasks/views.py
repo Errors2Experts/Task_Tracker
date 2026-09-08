@@ -26,6 +26,7 @@ from apps.accounts.permissions import (
     get_team_lead_reviewers, can_review_team_lead_approval,
     can_view_my_team, get_my_team_queryset, get_my_team_scope_message,
 )
+from apps.accounts.models import EmployeeAssignment
 from .forms import TaskAttachmentForm, TaskCommentForm, TaskEditForm, TaskRowForm, TaskStatusProgressForm
 from .models import (
     PushSubscription, Task, TaskActivity, TaskNotification, TaskPriority, TaskStatus, TaskAttachment,
@@ -244,35 +245,119 @@ def my_team(request):
     if not can_view_my_team(request.user):
         raise PermissionDenied("You don't have permission to view a team roster.")
 
-    members = get_my_team_queryset(request.user, User).select_related("team")
+    # -------------------------------------------------
+    # Base My Team queryset
+    # -------------------------------------------------
+    base_members = (
+        get_my_team_queryset(request.user, User)
+        .select_related("team")
+        .prefetch_related("assignments")
+    )
+
+    # -------------------------------------------------
+    # Designation choices
+    # -------------------------------------------------
+    # Get designations from ALL employees who are actually
+    # visible in My Team, including employees from other
+    # departments/teams that are within the user's scope.
+    # -------------------------------------------------
+    allowed_designations = set()
+
+    for employee in base_members:
+        # Multiple designation assignments
+        for assignment in employee.assignments.all():
+            if assignment.designation:
+                allowed_designations.add(assignment.designation)
+
+        # Legacy single designation support
+        if employee.designation:
+            allowed_designations.add(employee.designation)
+
+    designation_choices = [
+        choice
+        for choice in Designation.choices
+        if choice[0] in allowed_designations
+    ]
+
+    # -------------------------------------------------
+    # Search
+    # -------------------------------------------------
+    members = base_members
 
     query = request.GET.get("q", "").strip()
+
     if query:
         members = members.filter(
             Q(first_name__icontains=query)
             | Q(last_name__icontains=query)
             | Q(username__icontains=query)
+            | Q(employee_code__icontains=query)
         )
 
+    # -------------------------------------------------
+    # Role filter
+    # -------------------------------------------------
+    role_filter = request.GET.get("role", "").strip()
+
+    if role_filter and role_filter in Role.values:
+        members = members.filter(role=role_filter)
+
+    # -------------------------------------------------
+    # Designation filter
+    # -------------------------------------------------
+    designation_filter = request.GET.get("designation", "").strip()
+
+    if (
+        designation_filter
+        and designation_filter in allowed_designations
+    ):
+        members = members.filter(
+            Q(designation=designation_filter)
+            | Q(assignments__designation=designation_filter)
+        ).distinct()
+
+    # -------------------------------------------------
+    # Open task count
+    # -------------------------------------------------
     members = members.annotate(
         open_count=Count(
             "assigned_tasks",
-            filter=Q(assigned_tasks__status__in=[TaskStatus.PENDING, TaskStatus.BLOCKED, TaskStatus.IN_PROGRESS]),
+            filter=Q(
+                assigned_tasks__status__in=[
+                    TaskStatus.PENDING,
+                    TaskStatus.BLOCKED,
+                    TaskStatus.IN_PROGRESS,
+                ]
+            ),
         )
     ).order_by("first_name", "last_name")
 
+    # -------------------------------------------------
+    # Pagination
+    # -------------------------------------------------
     paginator = Paginator(members, PAGE_SIZE)
     page_obj = paginator.get_page(request.GET.get("page"))
 
+    # -------------------------------------------------
+    # Context
+    # -------------------------------------------------
     context = {
         "members": page_obj,
         "page_obj": page_obj,
         "paginator": paginator,
+
         "query": query,
+
+        "role_filter": role_filter,
+        "designation_filter": designation_filter,
+
+        "role_choices": Role.choices,
+        "designation_choices": designation_choices,
+
         "scope_message": get_my_team_scope_message(request.user),
     }
-    return render(request, "tasks/my_team.html", context)
 
+    return render(request, "tasks/my_team.html", context)
 
 @login_required
 def task_assign_form(request, employee_id):
@@ -294,14 +379,57 @@ def task_assign_form(request, employee_id):
         and employee.team_id == request.user.team_id
     )
     is_team_lead_assigner = (
-        request.user.role == Role.REPORTING_PERSON
-        and request.user.designation == Designation.TEAM_LEAD_DEVELOPER
+    request.user.role == Role.REPORTING_PERSON and request.user.designation in (
+        Designation.TEAM_LEAD_DEVELOPER,
+        Designation.TECHNICAL_LEAD,
     )
+)
     show_team_lead_checkbox = is_team_lead_assigner and not is_same_team
+
+    # Designation/department/team the task can be assigned under. An
+    # employee can hold several (see EmployeeAssignment) — self-heal a
+    # single row from the legacy fields for anyone who predates that model
+    # so the dropdown below always has something to show.
+    assignment_rows = list(employee.assignments.select_related("team"))
+    if not assignment_rows and employee.designation:
+        EmployeeAssignment.objects.create(
+            employee=employee,
+            designation=employee.designation,
+            team=employee.team,
+            department=employee.team.department if employee.team_id else None,
+            is_primary=True,
+        )
+        assignment_rows = list(employee.assignments.select_related("team"))
+
+    def _resolve_assignment(assignment_id):
+        if assignment_id:
+            for row in assignment_rows:
+                if str(row.id) == str(assignment_id):
+                    return row
+        # Fall back to the primary row (or the only one there is) so a
+        # single-designation employee doesn't need a dropdown at all.
+        primary = next((row for row in assignment_rows if row.is_primary), None)
+        return primary or (assignment_rows[0] if assignment_rows else None)
 
     if request.method == "POST":
         formset = TaskRowFormSet(request.POST, request.FILES, prefix="tasks")
         reporting_to_id = request.POST.get("reporting_to") or None
+
+        selected_assignment = _resolve_assignment(request.POST.get("assignment"))
+        task_team = (selected_assignment.team if selected_assignment else None) or employee.team
+        task_designation = selected_assignment.designation if selected_assignment else (employee.designation or "")
+        task_department = (
+            (selected_assignment.department if selected_assignment else "")
+            or (task_team.department if task_team else "")
+        )
+
+        if not task_team:
+            messages.error(
+                request,
+                "This employee doesn't have a team assigned for the selected designation. "
+                "Add a team to their designation/department assignment first.",
+            )
+            return redirect("task_assign_list")
 
         # Team Lead approval is a single checkbox for the whole submission —
         # applies to every task row created here, not per-row. Only a real
@@ -340,7 +468,9 @@ def task_assign_form(request, employee_id):
                     priority=data.get("priority") or "MEDIUM",
                     due_date=data.get("due_date"),
                     due_time=data.get("due_time"),
-                    team=employee.team,
+                    team=task_team,
+                    designation=task_designation,
+                    department=task_department,
                     assigned_to=employee,
                     reporting_to_id=reporting_to_id,
                     created_by=request.user,
@@ -406,17 +536,22 @@ def task_assign_form(request, employee_id):
         formset = TaskRowFormSet(prefix="tasks")
 
     # "Reporting to" dropdown: people this employee's assignment could report into
-    # (their own team lead / department lead / admins & managers)
-    reporting_persons = User.objects.filter(
-        role=Role.REPORTING_PERSON,
-        team__department=employee.team.department,
-    )
+    # (their own team lead / department lead / admins & managers). Falls back
+    # across all of the employee's assignment rows/departments, not just their
+    # primary team, since they may now hold several.
+    employee_departments = {
+        row.department or (row.team.department if row.team_id else None)
+        for row in assignment_rows
+    }
+    employee_departments.discard(None)
+    if not employee_departments and employee.team_id:
+        employee_departments = {employee.team.department}
 
-    if reporting_persons.exists():
-        reporting_filter = Q(
-        role=Role.REPORTING_PERSON,
-        team__department=employee.team.department,
-    )
+    if employee_departments:
+        reporting_filter = Q(role=Role.REPORTING_PERSON, team__department__in=employee_departments)
+        reporting_persons = User.objects.filter(reporting_filter)
+        if not reporting_persons.exists():
+            reporting_filter = Q(role=Role.REPORTING_PERSON)
     else:
         reporting_filter = Q(role=Role.REPORTING_PERSON)
 
@@ -431,6 +566,8 @@ def task_assign_form(request, employee_id):
     reporting_to_choices = User.objects.filter(
         Q(is_superuser=True)                  
         | Q(designation=Designation.MANAGER) 
+        | Q(designation=Designation.TECHNICAL_LEAD)
+        | Q(assignments__designation=Designation.TECHNICAL_LEAD)
         | reporting_filter                 
     ).exclude(id=employee.id).distinct()
 
@@ -439,6 +576,7 @@ def task_assign_form(request, employee_id):
         "formset": formset,
         "reporting_to_choices": reporting_to_choices,
         "show_team_lead_checkbox": show_team_lead_checkbox,
+        "assignment_rows": assignment_rows,
     }
     return render(request, "tasks/task_assign_form.html", context)
 
@@ -571,9 +709,7 @@ def update_task_status(request, task_id):
         if task.status == TaskStatus.COMPLETED:
             messages.error(request, "Completed tasks cannot be modified.")
             return redirect("my_tasks")
-        if task.status == TaskStatus.CANCELLED:
-            messages.error(request, "This task was cancelled — the Team Lead rejected the cross-team assignment.")
-            return redirect("my_tasks")
+        
         new_status = request.POST.get("status")
         if new_status == TaskStatus.CANCELLED:
             # Cancelling is never a self-service action — it only happens
