@@ -269,12 +269,11 @@ class EmployeeEditForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["full_name"].initial = self.instance.get_full_name()
         self.fields["password"].initial = self.instance.plain_password or ""
-        self.fields["reporting_person"].required = False
-        self.fields["reporting_person"].empty_label = "No reporting person"
-        self.fields["reporting_person"].queryset = (
-            User.objects.filter(Q(role=Role.REPORTING_PERSON) | Q(is_superuser=True))
-            .exclude(pk=self.instance.pk)
-        )
+        self.fields["reporting_person"].label_from_instance = lambda user: (
+                f"{user.get_full_name() or user.username} - "
+                f"{user.employee_code} - "
+                f"{user.get_role_display()}"
+            )
 
     def clean_role(self):
         role = self.cleaned_data["role"]
